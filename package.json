@@ -1,0 +1,20 @@
+{
+  "name": "typeflake",
+  "version": "0.0.0",
+  "private": true,
+  "description": "TypeScript and Effect authoring for real Nix flakes.",
+  "type": "module",
+  "license": "MIT",
+  "scripts": {
+    "check": "node -e \"console.log('No implementation checks configured yet.')\"",
+    "format": "node -e \"console.log('No formatter configured yet.')\""
+  },
+  "keywords": [
+    "nix",
+    "nixos",
+    "flakes",
+    "typescript",
+    "effect"
+  ],
+  "devDependencies": {}
+}
