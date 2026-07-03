@@ -11,6 +11,19 @@
     "noFallthroughCasesInSwitch": true,
     "noImplicitOverride": true,
     "noUncheckedIndexedAccess": true,
+    "plugins": [
+      {
+        "name": "@effect/language-service",
+        "diagnosticSeverity": {
+          "floatingEffect": "error",
+          "globalErrorInEffectCatch": "error",
+          "globalErrorInEffectFailure": "error"
+        },
+        "diagnostics": true,
+        "includeSuggestionsInTsc": true,
+        "refactors": true
+      }
+    ],
     "rootDir": ".",
     "skipLibCheck": true,
     "strict": true,
