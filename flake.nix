@@ -3,12 +3,17 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
+    home-manager = {
+      url = "github:nix-community/home-manager";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     nub.url = "github:nubjs/nub";
   };
 
   outputs =
     {
       self,
+      home-manager,
       nixpkgs,
       nub,
     }:
