@@ -7,6 +7,12 @@ export interface NixExpr<Kind extends string = string> {
   readonly code: string;
 }
 
+export interface UnsupportedNixOptionExpr<
+  Description extends string,
+> extends NixExpr<"unsupported"> {
+  readonly __unsupportedNixOption: Description;
+}
+
 export interface NixString {
   readonly [nixValueSymbol]: true;
   readonly tag: "string";
@@ -72,6 +78,14 @@ export const nixExpr = <Kind extends string>(kind: Kind, code: string): NixExpr<
   tag: "raw",
   kind,
   code,
+});
+
+export const unsupportedNixOption = <const Description extends string>(
+  description: Description,
+  code: string,
+): UnsupportedNixOptionExpr<Description> => ({
+  ...nixExpr("unsupported", code),
+  __unsupportedNixOption: description,
 });
 
 export const nixAttrPath = <Kind extends string>(

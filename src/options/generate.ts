@@ -28,7 +28,7 @@ export const generateOptionTypes = (options: GenerateOptionTypesOptions): string
   const body = renderRootInterface(options.rootTypeName, options.scope, options.options);
 
   return `${renderGeneratedHeader()}
-import type { NixExpr, NixInput } from ${JSON.stringify(options.importPath)};
+import type { NixExpr, NixInput, UnsupportedNixOptionExpr } from ${JSON.stringify(options.importPath)};
 
 ${renderSharedTypes()}
 
@@ -42,11 +42,15 @@ export const generateOptionTypeFile = (options: GenerateOptionTypeFileOptions): 
     .join("\n\n");
 
   return `${renderGeneratedHeader(options.fixtureScope)}
-import type { NixExpr, NixInput } from ${JSON.stringify(options.importPath)};
+import type { NixExpr, NixInput, UnsupportedNixOptionExpr } from ${JSON.stringify(options.importPath)};
 
 ${renderSharedTypes()}
 
 ${interfaces}
+
+${renderRootNamespaces(options.roots)}
+
+${renderUnsupportedMetadata(options.options)}
 `;
 };
 
@@ -71,9 +75,8 @@ const renderGeneratedHeader = (fixtureScope?: string): string => {
 
 const renderSharedTypes = (): string => `export type NixOptionValue<T> = T | NixExpr;
 
-export type UnsupportedNixOption<Description extends string> = NixExpr<"unsupported"> & {
-  readonly __unsupportedNixOption: Description;
-};`;
+export type UnsupportedNixOption<Description extends string> =
+  UnsupportedNixOptionExpr<Description>;`;
 
 const buildOptionTree = (options: readonly OptionIR[]): OptionTree => {
   const root = createTree();
@@ -114,19 +117,24 @@ const renderTree = (tree: OptionTree, depth: number): string => {
   }
 
   const pad = indentation(depth);
-  const childPad = indentation(depth + 1);
-  const rendered = entries
-    .map(
-      ([key, child]) =>
-        `${childPad}readonly ${quoteProperty(key)}?: ${renderTree(child, depth + 1)};`,
-    )
-    .join("\n");
+  const rendered = entries.map(([key, child]) => renderTreeEntry(key, child, depth + 1)).join("\n");
 
   return `{\n${rendered}\n${pad}}`;
 };
 
-const toOptionValueType = (option: OptionIR): string =>
-  `NixOptionValue<${toTypeScriptType(option.type, option.path)}>`;
+const renderTreeEntry = (key: string, child: OptionTree, depth: number): string => {
+  const childPad = indentation(depth);
+  const optionComment = child.children.size === 0 ? renderOptionComment(child.option, depth) : "";
+
+  return `${optionComment}${childPad}readonly ${quoteProperty(key)}?: ${renderTree(child, depth)};`;
+};
+
+const toOptionValueType = (option: OptionIR): string => {
+  const optionType = toTypeScriptType(option.type, option.path);
+  return optionType.startsWith("UnsupportedNixOption<")
+    ? optionType
+    : `NixOptionValue<${optionType}>`;
+};
 
 export const toTypeScriptType = (nixType: OptionTypeIR, path: readonly string[] = []): string => {
   const normalized = normalizeTypeName(nixType.name);
@@ -136,12 +144,8 @@ export const toTypeScriptType = (nixType: OptionTypeIR, path: readonly string[] 
   if (normalized === "nullor") return renderNullableType(nixType, path);
   if (normalized === "listof") return renderListType(nixType, path);
   if (normalized === "attrsof") return renderAttrsType(nixType, path);
-  if (
-    normalized === "str" ||
-    normalized === "string" ||
-    normalized === "enum" ||
-    normalized.startsWith("strmatching")
-  ) {
+  if (normalized === "enum") return renderEnumType(nixType) ?? "string";
+  if (normalized === "str" || normalized === "string" || normalized.startsWith("strmatching")) {
     return "string";
   }
   if (isNumberType(normalized, description)) return "number";
@@ -205,3 +209,86 @@ const quoteProperty = (key: string): string =>
   /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(key) ? key : JSON.stringify(key);
 
 const indentation = (depth: number): string => "  ".repeat(depth);
+
+const renderRootNamespaces = (roots: readonly OptionTypeRoot[]): string =>
+  roots.map(renderRootNamespace).join("\n\n");
+
+const renderRootNamespace = (root: OptionTypeRoot): string => `export namespace ${namespaceName(
+  root,
+)} {
+  export type Config = ${root.rootTypeName};
+}`;
+
+const namespaceName = (root: OptionTypeRoot): string => {
+  switch (root.scope) {
+    case "home-manager":
+      return "HomeManagerOptions";
+    case "nixos":
+      return "NixOSOptions";
+    default:
+      root.scope satisfies never;
+      return `${root.rootTypeName}Options`;
+  }
+};
+
+const renderUnsupportedMetadata = (options: readonly OptionIR[]): string => {
+  const unsupported = collectUnsupportedOptions(options);
+  if (unsupported.length === 0) return "export const unsupportedNixOptions = [] as const;";
+
+  const entries = unsupported.map(
+    (option) => `  {
+    scope: ${JSON.stringify(option.scope)},
+    path: ${JSON.stringify(option.path.join("."))},
+    type: ${JSON.stringify(option.type.name)},
+    description: ${JSON.stringify(renderUnsupportedDescription(option.type))},
+  },`,
+  );
+
+  return `export const unsupportedNixOptions = [
+${entries.join("\n")}
+] as const;`;
+};
+
+const renderOptionComment = (option: OptionIR | undefined, depth: number): string => {
+  if (option === undefined) return "";
+
+  const lines = [
+    option.description,
+    option.defaultText === null ? null : `Default: ${option.defaultText}`,
+    option.exampleText === null ? null : `Example: ${option.exampleText}`,
+  ].flatMap((line) => (line === null ? [] : [sanitizeCommentLine(line)]));
+
+  if (lines.length === 0) return "";
+
+  const pad = indentation(depth);
+
+  return `${pad}/**\n${lines.map((line) => `${pad} * ${line}`).join("\n")}\n${pad} */\n`;
+};
+
+const sanitizeCommentLine = (line: string): string => {
+  const withoutTerminators = line.replaceAll("*/", "* /").replaceAll(/\s+/g, " ").trim();
+  return withoutTerminators.length > 160
+    ? `${withoutTerminators.slice(0, 157).trimEnd()}...`
+    : withoutTerminators;
+};
+
+const renderEnumType = (nixType: OptionTypeIR): string | undefined => {
+  const literals = enumLiterals(nixType.description);
+  if (literals.length === 0) return undefined;
+  if (literals.length > 6) {
+    return `\n${literals.map((literal) => `      | ${JSON.stringify(literal)}`).join("\n")}\n    `;
+  }
+
+  return literals.map((literal) => JSON.stringify(literal)).join(" | ");
+};
+
+const enumLiterals = (description: string | null): readonly string[] => {
+  if (description === null) return [];
+
+  return [...description.matchAll(/"((?:\\.|[^"\\])*)"/g)].flatMap((match) => {
+    const [, literal] = match;
+    if (literal === undefined) return [];
+
+    return [literal.replaceAll('\\"', '"')];
+  });
+};

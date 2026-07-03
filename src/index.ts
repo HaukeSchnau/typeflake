@@ -9,8 +9,22 @@ export {
   type TypeflakeFlake,
 } from "./flake.ts";
 export { Home, type HomeNixOSModuleOptions } from "./home.ts";
+export {
+  initProject,
+  renderInitSummary,
+  type InitOptions,
+  type InitPackageManager,
+  type InitResult,
+} from "./init.ts";
 export { type Module, moduleFromConfig, rawModule } from "./module.ts";
-export { type NixExpr, type NixInput, type NixValue, rawNix } from "./nix/expr.ts";
+export {
+  type NixExpr,
+  type NixInput,
+  type NixValue,
+  type UnsupportedNixOptionExpr,
+  rawNix,
+  unsupportedNixOption,
+} from "./nix/expr.ts";
 export { renderNixValue } from "./nix/render.ts";
 export type {
   HomeManagerGeneratedConfig,

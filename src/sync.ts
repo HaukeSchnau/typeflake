@@ -10,6 +10,7 @@ import { tsgoCommand } from "./tooling.ts";
 export interface SyncOptions {
   readonly input: string;
   readonly output: string;
+  readonly project?: string;
 }
 
 export const sync = (options: SyncOptions) =>
@@ -20,7 +21,7 @@ export const sync = (options: SyncOptions) =>
     const outputPath = path.resolve(options.output);
     const moduleUrl = yield* path.toFileUrl(inputPath);
 
-    yield* runTypeScriptCheck("tsconfig.json");
+    yield* runTypeScriptCheck(options.project ?? "tsconfig.json");
 
     const loaded = yield* loadFlakeModule(moduleUrl);
     const spec = yield* resolveFlakeSpec(loaded.default);

@@ -27,3 +27,8 @@ export class OptionMetadataParseError extends Data.TaggedError("OptionMetadataPa
 export class UnsupportedOptionsFound extends Data.TaggedError("UnsupportedOptionsFound")<{
   readonly options: readonly string[];
 }> {}
+
+export class InitWriteFailed extends Data.TaggedError("InitWriteFailed")<{
+  readonly cause: unknown;
+  readonly path: string;
+}> {}
