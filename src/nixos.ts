@@ -1,5 +1,5 @@
 import { moduleFromConfig, type Module } from "./module.ts";
-import { nixExpr, rawNix, type NixExpr, type NixValue } from "./nix/expr.ts";
+import { nixExpr, rawNix, type NixExpr, type NixInput } from "./nix/expr.ts";
 import { renderList, renderNixValue } from "./nix/render.ts";
 
 export type System =
@@ -29,4 +29,4 @@ export const NixOS = {
   },
 };
 
-export type NixOSModuleConfig = { readonly [key: string]: NixValue | undefined };
+export type NixOSModuleConfig = { readonly [key: string]: NixInput | undefined };

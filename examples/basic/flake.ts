@@ -2,10 +2,10 @@ import { Flake, Home, NixOS, pkgs } from "../../src/index.ts";
 
 export default Flake.make({
   description: "A tiny Typeflake-generated NixOS configuration",
-  inputs: {
-    nixpkgs: "github:NixOS/nixpkgs/nixos-unstable",
-    homeManager: "github:nix-community/home-manager",
-  },
+  inputs: Flake.inputs({
+    nixpkgs: Flake.input("nixpkgs", "github:NixOS/nixpkgs/nixos-unstable"),
+    homeManager: Flake.input("homeManager", "github:nix-community/home-manager"),
+  }),
   outputs: ({ homeManager }) => ({
     nixosConfigurations: {
       framework: NixOS.configuration({

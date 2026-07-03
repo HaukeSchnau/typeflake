@@ -1,8 +1,8 @@
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
 import * as Path from "effect/Path";
-import { ChildProcess, ChildProcessSpawner } from "effect/unstable/process";
 import { NixCheckFailed } from "./errors.ts";
+import { runCommandExitCode } from "./process.ts";
 import { sync, type SyncOptions } from "./sync.ts";
 
 export interface CheckOptions extends SyncOptions {
@@ -34,14 +34,14 @@ const prepareFlakeTarget = (output: string) =>
 
 const runNixFlakeCheck = (target: string, noBuild: boolean) =>
   Effect.gen(function* () {
-    const process = yield* ChildProcessSpawner.ChildProcessSpawner;
     const args = noBuild ? ["flake", "check", "--no-build", target] : ["flake", "check", target];
-    const command = ChildProcess.make("nix", args, {
+    const exitCode = yield* runCommandExitCode({
+      args,
+      command: "nix",
       stderr: "inherit",
       stdin: "inherit",
       stdout: "inherit",
     });
-    const exitCode = yield* process.exitCode(command);
 
     if (exitCode !== 0) {
       return yield* new NixCheckFailed({ exitCode, target });

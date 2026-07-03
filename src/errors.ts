@@ -14,3 +14,7 @@ export class TypeScriptCheckFailed extends Data.TaggedError("TypeScriptCheckFail
   readonly exitCode: number;
   readonly project: string;
 }> {}
+
+export class DoctorFailed extends Data.TaggedError("DoctorFailed")<{
+  readonly failedChecks: readonly string[];
+}> {}

@@ -29,6 +29,8 @@ Build the first Typeflake implementation spike:
   - `Flake.make` is pure-only.
   - `Flake.effect` is the explicit effectful authoring path and preserves
     Effect error/context tainting in the type.
+  - `Flake.impure` is the explicit tainted path for authoring that performs
+    non-deterministic or environment-dependent work before producing a flake.
   - `sync` and `check` use Effect services for filesystem, path, and child
     process boundaries.
   - CLI/runtime errors use tagged errors instead of global `Error` in the
@@ -36,6 +38,26 @@ Build the first Typeflake implementation spike:
   - `sync` runs `tsgo --noEmit --project tsconfig.json` before dynamically
     importing `flake.ts`, so the compiler validates the authoring surface before
     runtime loading.
+- Nix value model:
+  - Public authoring APIs accept `NixInput` at trust boundaries.
+  - `normalizeNixInput` converts ergonomic authoring values into a closed
+    discriminated `NixValue` AST before rendering.
+  - Raw Nix remains an explicit typed escape hatch through `NixExpr<Kind>`.
+- Flake inputs:
+  - Inputs are authored with `Flake.input(name, url)` and collected with
+    `Flake.inputs(...)`.
+  - The input object key must match the explicit input name at compile time,
+    removing the previous input-ref map assertion.
+- Testing:
+  - Runtime tests use `@effect/vitest`.
+  - Type-level contracts live in Vitest files so `tsgo` validates them during
+    `nub run check`.
+  - Regression tests cover input-name mismatch rejection at both helper and
+    constructor boundaries, user attrsets with `tag` keys, renderer output, taint
+    values, and doctor process handling.
+  - `@effect/vitest@4.0.0-beta.93` currently needs an explicit
+    `@vitest/runner@4.1.4` package extension because its published package
+    metadata imports that package at runtime but lists it only as a devDependency.
 
 ## Current Plan
 
@@ -64,6 +86,18 @@ examples/basic/flake.generated.nix` passes and performs the temporary generated-
   - `nub run typeflake check --input examples/basic/flake.ts --output
 examples/basic/flake.generated.nix` passes.
   - `nix flake check --no-build` passes for the project flake.
+- Hardened type-model slice:
+  - `nub run check` passes, including oxlint type-aware checks, Effect TSGO
+    diagnostics, Effect Vitest runtime tests, type-level tests, and oxfmt check.
+    Current suite: 4 test files, 9 tests.
+  - `nub run typeflake doctor` passes against real local tools.
+  - `nub run typeflake check --input examples/basic/flake.ts --output
+examples/basic/flake.generated.nix` passes and verifies the generated Nix flake.
+  - `nix flake check --no-build` passes for the project flake.
+  - Independent review found three issues before commit; fixed by enforcing
+    checked input names at constructor boundaries, branding internal Nix AST
+    values with a private symbol so user `tag` attrsets remain data, and making
+    doctor tests command-sensitive rather than spawn-order-sensitive.
 
 ## Tooling Notes
 
@@ -77,10 +111,10 @@ examples/basic/flake.generated.nix` passes.
 - The external `@effect/cli` package currently publishes against Effect v3 peer
   ranges. For this v4-beta spike, the CLI uses Effect v4's native
   `effect/unstable/cli` modules instead of adding a v3 peer island.
-- The exact input-ref map currently has one fenced type assertion in
-  `src/flake.ts`, because TypeScript cannot infer that `Object.keys(inputs)`
-  covers `keyof Inputs`. Keep this isolated until a stronger builder or codegen
-  model removes it.
+- `pnpm install --ignore-scripts` still refreshes the lockfile successfully but
+  exits through the local Node/libuv assertion after install. Use `nub install
+--ignore-scripts` for normal workflow; pnpm should be treated as a fallback only
+  on this machine.
 
 ## Open Questions
 

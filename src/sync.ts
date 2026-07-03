@@ -2,9 +2,9 @@ import * as Clock from "effect/Clock";
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
 import * as Path from "effect/Path";
-import { ChildProcess, ChildProcessSpawner } from "effect/unstable/process";
 import { FlakeImportError, TypeScriptCheckFailed } from "./errors.ts";
 import { type FlakeModule, renderFlake, resolveFlakeSpec } from "./flake.ts";
+import { runCommandExitCode } from "./process.ts";
 
 export interface SyncOptions {
   readonly input: string;
@@ -45,13 +45,13 @@ const importFlakeModule: (specifier: string) => Promise<FlakeModule> = (specifie
 
 const runTypeScriptCheck = (project: string) =>
   Effect.gen(function* () {
-    const process = yield* ChildProcessSpawner.ChildProcessSpawner;
-    const command = ChildProcess.make("tsgo", ["--noEmit", "--project", project], {
+    const exitCode = yield* runCommandExitCode({
+      args: ["--noEmit", "--project", project],
+      command: "tsgo",
       stderr: "inherit",
       stdin: "inherit",
       stdout: "inherit",
     });
-    const exitCode = yield* process.exitCode(command);
 
     if (exitCode !== 0) {
       return yield* new TypeScriptCheckFailed({ exitCode, project });
