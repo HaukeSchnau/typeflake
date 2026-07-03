@@ -36,6 +36,8 @@ Build the first Typeflake implementation spike:
   after copying it to a temporary `flake.nix`.
 - CLI check command: `nub run typeflake check --input examples/basic/flake.ts --output
 examples/basic/flake.generated.nix` passes and performs the temporary generated-flake check internally.
+- First-spike retrospective captured in
+  [first-spike-retrospective.md](./first-spike-retrospective.md).
 
 ## Tooling Notes
 
