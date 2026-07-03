@@ -28,6 +28,15 @@ project-local option-generation slices:
 - Effect diagnostics: `tsgo --noEmit --project tsconfig.json` is part of
   `nub run check` because Oxlint type-aware mode does not currently surface
   Effect language-service diagnostics.
+- Published package build: `prepack` runs `tsdown` and emits ESM plus
+  declarations under ignored `dist/`; the source repo does not commit generated
+  package output.
+- Published bin: npm strips an executable target that points directly at
+  `dist/cli.mjs`, so `bin/typeflake.js` is a stable checked-in wrapper that
+  imports the built CLI.
+- Published CLI tools: `@typescript/native-preview` and `@effect/tsgo` are
+  runtime dependencies because installed `typeflake` resolves their package-local
+  binaries directly for `doctor` and project type checks.
 - Nix dev environment: repository `flake.nix` with Nub, Node, pnpm, Nix, jq, and nixfmt.
 - Effect version: v4 beta line, matching the project vision.
 - Nix remains execution truth; TypeScript remains authoring truth.
@@ -100,6 +109,8 @@ project-local option-generation slices:
 7. Generate a pinned option fixture and expose typed config boundaries. Done.
 8. Verify with typecheck, lint, runtime tests, type tests, generated Nix, and the repository flake check. Done.
 9. Add project-local option probe/generate commands backed by a nested fixture flake lock. Done.
+10. Prepare and publish a public npm alpha for name reservation and early
+    testing. In progress.
 
 ## Verification Status
 
@@ -164,6 +175,20 @@ examples/basic/flake.generated.nix` passes and verifies the generated Nix flake.
 examples/basic/flake.generated.nix` passes and verifies the generated Nix
     flake.
   - `nix flake check --no-build` passes for the project flake.
+- NPM alpha packaging:
+  - `npm view typeflake name version description --json` returned 404 before
+    publishing, so the package name appeared available on 2026-07-03.
+  - Fresh tarball install smoke passed in a temporary ESM consumer project:
+    `typeflake --version`, `typeflake --help`, importing `typeflake`,
+    consumer `tsgo --noEmit`, and installed `typeflake doctor --project
+tsconfig.json`.
+  - `npm publish --dry-run --tag next` passes the full publish lifecycle and
+    includes `bin/typeflake.js`; the only npm publish warning is expected
+    unauthenticated dry-run output.
+  - `tsdown` currently emits a non-fatal declaration sourcemap warning from
+    `rolldown-plugin-dts:fake-js`; build exits successfully.
+  - `npm whoami` reported `ENEEDAUTH`, so final publish requires user npm
+    login and any account 2FA flow.
 
 ## Tooling Notes
 
