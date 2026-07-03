@@ -24,7 +24,7 @@ Build the first Typeflake implementation spike:
 1. Add reproducible tooling and push to `main`.
 2. Add core TypeScript model for Nix expressions, packages, modules, flakes, and raw escape hatches.
 3. Add a minimal Nix AST/printer and renderer.
-4. Add `typeflake sync`.
+4. Add `typeflake sync` and `typeflake check`.
 5. Add a tiny example `examples/basic/flake.ts`.
 6. Verify with typecheck, lint, format, and generated Nix.
 
@@ -34,6 +34,8 @@ Build the first Typeflake implementation spike:
 - Core implementation: first vertical slice implemented.
 - Nix execution check: generated `examples/basic/flake.generated.nix` passed `nix flake check --no-build`
   after copying it to a temporary `flake.nix`.
+- CLI check command: `nub run typeflake check --input examples/basic/flake.ts --output
+examples/basic/flake.generated.nix` passes and performs the temporary generated-flake check internally.
 
 ## Tooling Notes
 
@@ -50,4 +52,3 @@ Build the first Typeflake implementation spike:
 - Whether to keep generated `flake.nix` at repository root by default or write to a separate output path during early development.
 - How aggressively to type NixOS module config before option extraction lands.
 - Whether `typeflake sync` should optionally run `nixfmt` on generated output when available.
-- Whether `typeflake check` should create a temporary generated flake directory for non-root output paths.
