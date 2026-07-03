@@ -1,0 +1,122 @@
+{
+  "homeManager": [
+    {
+      "declarations": [
+        "/nix/store/6ml8k960pjkrbb0dp0v06iacfkr9jfj9-source/modules/misc/version.nix"
+      ],
+      "defaultText": null,
+      "description": "It is occasionally necessary for Home Manager to change\nconfiguration defaults in a way that is incompatible with\nstateful data. This could, for example, include switching the\ndefault data format or location of a file.\n\nThe *state version* indicates which default\nsettings are in effect and will therefore help avoid breaking\nprogram configurations. Switching to a higher state version\ntypically requires performing some manual steps, such as data\nconversion or moving files.\n",
+      "exampleText": null,
+      "internal": false,
+      "path": ["home", "stateVersion"],
+      "readOnly": false,
+      "scope": "home-manager",
+      "type": "enum",
+      "visible": true
+    },
+    {
+      "declarations": [
+        "/nix/store/6ml8k960pjkrbb0dp0v06iacfkr9jfj9-source/modules/programs/git.nix"
+      ],
+      "defaultText": null,
+      "description": "Whether to enable Git.",
+      "exampleText": "true",
+      "internal": false,
+      "path": ["programs", "git", "enable"],
+      "readOnly": false,
+      "scope": "home-manager",
+      "type": "bool",
+      "visible": true
+    }
+  ],
+  "nixos": [
+    {
+      "declarations": [
+        "/nix/store/fafnljsz5sckb1vzpns5dc2l6z4xkakm-source/nixos/modules/system/boot/loader/grub/grub.nix"
+      ],
+      "defaultText": null,
+      "description": "The devices on which the boot loader, GRUB, will be\ninstalled. Can be used instead of `device` to\ninstall GRUB onto multiple devices.\n",
+      "exampleText": "[\"/dev/disk/by-id/wwn-0x500001234567890a\"]",
+      "internal": false,
+      "path": ["boot", "loader", "grub", "devices"],
+      "readOnly": false,
+      "scope": "nixos",
+      "type": "listOf",
+      "visible": true
+    },
+    {
+      "declarations": [
+        "/nix/store/fafnljsz5sckb1vzpns5dc2l6z4xkakm-source/nixos/modules/config/system-path.nix"
+      ],
+      "defaultText": null,
+      "description": "The set of packages that appear in\n/run/current-system/sw.  These packages are\nautomatically available to all users, and are\nautomatically updated every time you rebuild the system\nconfiguration.  (The latter is the main difference with\ninstalling them in the default profile,\n{file}`/nix/var/nix/profiles/default`.\n",
+      "exampleText": "[ pkgs.firefox pkgs.thunderbird ]",
+      "internal": false,
+      "path": ["environment", "systemPackages"],
+      "readOnly": false,
+      "scope": "nixos",
+      "type": "listOf",
+      "visible": true
+    },
+    {
+      "declarations": [
+        "/nix/store/fafnljsz5sckb1vzpns5dc2l6z4xkakm-source/nixos/modules/tasks/filesystems/overlayfs.nix",
+        "/nix/store/fafnljsz5sckb1vzpns5dc2l6z4xkakm-source/nixos/modules/tasks/filesystems.nix",
+        "/nix/store/fafnljsz5sckb1vzpns5dc2l6z4xkakm-source/nixos/modules/tasks/encrypted-devices.nix",
+        "/nix/store/fafnljsz5sckb1vzpns5dc2l6z4xkakm-source/nixos/modules/system/boot/stage-1.nix"
+      ],
+      "defaultText": null,
+      "description": "The file systems to be mounted.  It must include an entry for\nthe root directory (`mountPoint = \"/\"`).  Each\nentry in the list is an attribute set with the following fields:\n`mountPoint`, `device`,\n`fsType` (a file system type recognised by\n{command}`mount`), and `options`\n(the mount options passed to {command}`mount` using the\n{option}`-o` flag; defaults to `[ \"defaults\" ]`).\n\nInstead of specifying `device`, you can also\nspecify a volume label (`label`) for file\nsystems that support it, such as ext2/ext3 (see {command}`mke2fs -L`).\n",
+      "exampleText": "{\n  \"/\".device = \"/dev/hda1\";\n  \"/data\" = {\n    device = \"/dev/hda2\";\n    fsType = \"ext3\";\n    options = [ \"data=journal\" ];\n  };\n  \"/bigdisk\".label = \"bigdisk\";\n}\n",
+      "internal": false,
+      "path": ["fileSystems"],
+      "readOnly": false,
+      "scope": "nixos",
+      "type": "attrsOf",
+      "visible": true
+    },
+    {
+      "declarations": [
+        "/nix/store/fafnljsz5sckb1vzpns5dc2l6z4xkakm-source/nixos/modules/services/networking/ssh/sshd.nix"
+      ],
+      "defaultText": null,
+      "description": "Whether to enable the OpenSSH secure shell daemon, which\nallows secure remote logins.\n",
+      "exampleText": null,
+      "internal": false,
+      "path": ["services", "openssh", "enable"],
+      "readOnly": false,
+      "scope": "nixos",
+      "type": "bool",
+      "visible": true
+    },
+    {
+      "declarations": [
+        "/nix/store/fafnljsz5sckb1vzpns5dc2l6z4xkakm-source/nixos/modules/misc/version.nix"
+      ],
+      "defaultText": "config.system.nixos.release",
+      "description": "This option defines the first version of NixOS you have installed on this particular machine,\nand is used to maintain compatibility with application data (e.g. databases) created on older NixOS versions.\n\nFor example, if NixOS version XX.YY ships with AwesomeDB version N by default, and is then\nupgraded to version XX.YY+1, which ships AwesomeDB version N+1, the existing databases\nmay no longer be compatible, causing applications to fail, or even leading to data loss.\n\nThe `stateVersion` mechanism avoids this situation by making the default version of such packages\nconditional on the first version of NixOS you've installed (encoded in `stateVersion`), instead of\nsimply always using the latest one.\n\nNote that this generally only affects applications that can't upgrade their data automatically -\napplications and services supporting automatic migrations will remain on latest versions when\nyou upgrade.\n\nMost users should **never** change this value after the initial install, for any reason,\neven if you've upgraded your system to a new NixOS release.\n\nThis value does **not** affect the Nixpkgs version your packages and OS are pulled from,\nso changing it will **not** upgrade your system.\n\nThis value being lower than the current NixOS release does **not** mean your system is\nout of date, out of support, or vulnerable.\n\nDo **not** change this value unless you have manually inspected all the changes it would\nmake to your configuration, and migrated your data accordingly.\n",
+      "exampleText": null,
+      "internal": false,
+      "path": ["system", "stateVersion"],
+      "readOnly": false,
+      "scope": "nixos",
+      "type": "str",
+      "visible": true
+    },
+    {
+      "declarations": [
+        "/nix/store/fafnljsz5sckb1vzpns5dc2l6z4xkakm-source/nixos/modules/services/networking/ssh/sshd.nix",
+        "/nix/store/fafnljsz5sckb1vzpns5dc2l6z4xkakm-source/nixos/modules/config/users-groups.nix"
+      ],
+      "defaultText": null,
+      "description": "Additional user accounts to be created automatically by the system.\nThis can also be used to set options for root.\n",
+      "exampleText": "{\"alice\":{\"createHome\":true,\"description\":\"Alice Q. User\",\"extraGroups\":[\"wheel\"],\"group\":\"users\",\"home\":\"/home/alice\",\"shell\":\"/bin/sh\",\"uid\":1234}}",
+      "internal": false,
+      "path": ["users", "users"],
+      "readOnly": false,
+      "scope": "nixos",
+      "type": "attrsOf",
+      "visible": true
+    }
+  ]
+}

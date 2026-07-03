@@ -1,16 +1,10 @@
-import {
-  normalizeNixInput,
-  renderAttrName,
-  type NixExpr,
-  type NixInput,
-  type NixValue,
-} from "./expr.ts";
+import { normalizeNixInput, renderAttrName, type NixExpr, type NixValue } from "./expr.ts";
 
 export interface RenderOptions {
   readonly indent?: number;
 }
 
-export const renderNixValue = (value: NixInput, options: RenderOptions = {}): string =>
+export const renderNixValue = (value: unknown, options: RenderOptions = {}): string =>
   renderValue(normalizeNixInput(value), options.indent ?? 0);
 
 const renderValue = (value: NixValue, indent: number): string => {
@@ -37,7 +31,7 @@ const renderValue = (value: NixValue, indent: number): string => {
   return absurd(value);
 };
 
-export const renderList = (items: readonly NixInput[], indent: number): string => {
+export const renderList = (items: readonly unknown[], indent: number): string => {
   const normalized = items.map(normalizeNixInput);
   if (normalized.length === 0) return "[]";
 
@@ -52,11 +46,11 @@ export const renderList = (items: readonly NixInput[], indent: number): string =
 };
 
 export const renderAttrSet = (
-  attrs: { readonly [key: string]: NixInput | undefined },
+  attrs: { readonly [key: string]: unknown },
   indent: number,
 ): string => {
   const entries = Object.entries(attrs).filter(
-    (entry): entry is [string, NixInput] => entry[1] !== undefined,
+    (entry): entry is [string, unknown] => entry[1] !== undefined,
   );
   if (entries.length === 0) return "{}";
 

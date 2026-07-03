@@ -107,13 +107,13 @@ export const nixNull: NixNull = {
   tag: "null",
 };
 
-export const nixList = (items: readonly NixInput[]): NixList => ({
+export const nixList = (items: readonly unknown[]): NixList => ({
   [nixValueSymbol]: true,
   tag: "list",
   items: items.map(normalizeNixInput),
 });
 
-export const nixAttrSet = (attrs: Readonly<Record<string, NixInput | undefined>>): NixAttrSet => ({
+export const nixAttrSet = (attrs: object): NixAttrSet => ({
   [nixValueSymbol]: true,
   tag: "attrset",
   attrs: Object.fromEntries(
@@ -124,7 +124,7 @@ export const nixAttrSet = (attrs: Readonly<Record<string, NixInput | undefined>>
   ),
 });
 
-export const normalizeNixInput = (value: NixInput): NixValue => {
+export const normalizeNixInput = (value: unknown): NixValue => {
   if (isNixValue(value)) return value;
 
   switch (typeof value) {
@@ -145,7 +145,7 @@ export const normalizeNixInput = (value: NixInput): NixValue => {
       throw new Error(`Cannot normalize ${typeof value} as Nix`);
   }
 
-  return absurd(value);
+  throw new Error(`Cannot normalize unsupported value as Nix: ${String(value)}`);
 };
 
 export const renderAttrName = (name: string): string =>
@@ -153,11 +153,11 @@ export const renderAttrName = (name: string): string =>
 
 const renderAttrPathSegment = renderAttrName;
 
-const isNixValue = (value: NixInput): value is NixValue =>
+const isNixValue = (value: unknown): value is NixValue =>
   typeof value === "object" &&
   value !== null &&
   nixValueSymbol in value &&
-  value[nixValueSymbol] &&
+  value[nixValueSymbol] === true &&
   "tag" in value &&
   (value.tag === "raw" ||
     value.tag === "string" ||
@@ -167,8 +167,4 @@ const isNixValue = (value: NixInput): value is NixValue =>
     value.tag === "list" ||
     value.tag === "attrset");
 
-const isReadonlyArray = (value: object): value is readonly NixInput[] => Array.isArray(value);
-
-const absurd = (value: never): never => {
-  throw new Error(`Unexpected Nix input: ${String(value)}`);
-};
+const isReadonlyArray = (value: object): value is readonly unknown[] => Array.isArray(value);

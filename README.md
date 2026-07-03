@@ -32,6 +32,70 @@ The first milestone focuses on:
 - option extraction from the real pinned Nix module graph.
 - a tiny CLI with `sync` and `check`.
 
+## Current Shape
+
+TypeScript remains the composition system. Typeflake provides typed boundaries
+for Nix concepts and generates ordinary Nix artifacts:
+
+```ts
+import { Flake, Home, NixOS, pkgs } from "typeflake";
+
+const systemConfig = NixOS.config({
+  services: {
+    openssh: {
+      enable: true,
+    },
+  },
+  environment: {
+    systemPackages: [pkgs.git, pkgs.neovim],
+  },
+  system: {
+    stateVersion: "25.11",
+  },
+});
+
+const homeConfig = {
+  home: {
+    stateVersion: "25.11",
+  },
+  programs: {
+    git: {
+      enable: true,
+    },
+  },
+} satisfies Home.Config;
+
+export default Flake.make({
+  inputs: Flake.inputs({
+    nixpkgs: Flake.input("nixpkgs", "github:NixOS/nixpkgs/nixos-unstable"),
+    homeManager: Flake.input("homeManager", "github:nix-community/home-manager"),
+  }),
+  outputs: ({ homeManager }) => ({
+    nixosConfigurations: {
+      framework: NixOS.configuration({
+        system: "x86_64-linux",
+        modules: [
+          NixOS.module(systemConfig),
+          Home.nixosModule(homeManager, {
+            users: {
+              hauke: homeConfig,
+            },
+          }),
+        ],
+      }),
+    },
+  }),
+});
+```
+
+The option bridge now has a narrow working vertical slice:
+
+- a Nix-side probe that evaluates pinned NixOS and Home Manager option metadata,
+- generated fixture types for a small option subset,
+- Attest-backed type assertions for the generated config surface,
+- and a golden test that compares real `nix eval --json` output to the committed
+  option fixture.
+
 Deployment and broader orchestration are intentionally later milestones. The
 first bet to prove is the type model.
 
@@ -44,5 +108,6 @@ first bet to prove is the type model.
 
 ## Status
 
-Pre-implementation. The initial repository captures the product direction and
-the first technical spike.
+Implementation spike in progress. The repository can render and check a small
+flake, run Effect-native CLI commands, and validate a first generated option
+type subset.

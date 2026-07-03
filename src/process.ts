@@ -23,3 +23,13 @@ export const runCommandExitCode = (options: RunCommandOptions) =>
 
     return Number(exitCode);
   });
+
+export const runCommandString = (options: RunCommandOptions) =>
+  Effect.gen(function* () {
+    const process = yield* ChildProcessSpawner.ChildProcessSpawner;
+    const command = ChildProcess.make(options.command, options.args, {
+      stdin: options.stdin ?? "ignore",
+    });
+
+    return yield* process.string(command, { includeStderr: options.stderr === "inherit" });
+  });

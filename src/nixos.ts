@@ -1,4 +1,5 @@
 import { moduleFromConfig, type Module } from "./module.ts";
+import type { NixOSGeneratedConfig } from "./generated/options.ts";
 import { nixExpr, rawNix, type NixExpr, type NixInput } from "./nix/expr.ts";
 import { renderList, renderNixValue } from "./nix/render.ts";
 
@@ -17,6 +18,10 @@ export interface NixOSConfigurationOptions {
 export type NixOSConfiguration = NixExpr<"nixosConfiguration">;
 
 export const NixOS = {
+  config(config: NixOS.Config): NixOS.Config {
+    return config;
+  },
+
   module: moduleFromConfig,
 
   configuration(options: NixOSConfigurationOptions): NixOSConfiguration {
@@ -30,3 +35,7 @@ export const NixOS = {
 };
 
 export type NixOSModuleConfig = { readonly [key: string]: NixInput | undefined };
+
+export namespace NixOS {
+  export type Config = NixOSGeneratedConfig;
+}

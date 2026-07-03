@@ -1,9 +1,10 @@
 import { type Module } from "./module.ts";
-import { type NixExpr, type NixInput, nixExpr, rawNix } from "./nix/expr.ts";
+import type { HomeManagerGeneratedConfig } from "./generated/options.ts";
+import { type NixExpr, nixExpr, rawNix } from "./nix/expr.ts";
 import { renderNixValue } from "./nix/render.ts";
 
 export interface HomeNixOSModuleOptions {
-  readonly users: { readonly [username: string]: NixInput };
+  readonly users: { readonly [username: string]: Home.Config };
 }
 
 export const Home = {
@@ -19,3 +20,7 @@ export const Home = {
     );
   },
 };
+
+export namespace Home {
+  export type Config = HomeManagerGeneratedConfig;
+}

@@ -1,5 +1,50 @@
 import { Flake, Home, NixOS, pkgs } from "../../src/index.ts";
 
+const systemConfig = NixOS.config({
+  boot: {
+    loader: {
+      grub: {
+        devices: ["nodev"],
+      },
+    },
+  },
+  environment: {
+    systemPackages: [pkgs.git, pkgs.neovim],
+  },
+  fileSystems: {
+    "/": {
+      device: "none",
+      fsType: "tmpfs",
+    },
+  },
+  services: {
+    openssh: {
+      enable: true,
+    },
+  },
+  system: {
+    stateVersion: "25.11",
+  },
+  users: {
+    users: {
+      hauke: {
+        isNormalUser: true,
+      },
+    },
+  },
+});
+
+const homeConfig = {
+  home: {
+    stateVersion: "25.11",
+  },
+  programs: {
+    git: {
+      enable: true,
+    },
+  },
+} satisfies Home.Config;
+
 export default Flake.make({
   description: "A tiny Typeflake-generated NixOS configuration",
   inputs: Flake.inputs({
@@ -11,51 +56,10 @@ export default Flake.make({
       framework: NixOS.configuration({
         system: "x86_64-linux",
         modules: [
-          NixOS.module({
-            boot: {
-              loader: {
-                grub: {
-                  devices: ["nodev"],
-                },
-              },
-            },
-            environment: {
-              systemPackages: [pkgs.git, pkgs.neovim],
-            },
-            fileSystems: {
-              "/": {
-                device: "none",
-                fsType: "tmpfs",
-              },
-            },
-            services: {
-              openssh: {
-                enable: true,
-              },
-            },
-            system: {
-              stateVersion: "25.11",
-            },
-            users: {
-              users: {
-                hauke: {
-                  isNormalUser: true,
-                },
-              },
-            },
-          }),
+          NixOS.module(systemConfig),
           Home.nixosModule(homeManager, {
             users: {
-              hauke: {
-                home: {
-                  stateVersion: "25.11",
-                },
-                programs: {
-                  git: {
-                    enable: true,
-                  },
-                },
-              },
+              hauke: homeConfig,
             },
           }),
         ],
