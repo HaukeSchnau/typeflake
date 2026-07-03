@@ -1,9 +1,9 @@
 import { type Module } from "./module.ts";
-import { type NixExpr, nixExpr, rawNix, type NixValue } from "./nix/expr.ts";
+import { type NixExpr, type NixInput, nixExpr, rawNix } from "./nix/expr.ts";
 import { renderNixValue } from "./nix/render.ts";
 
 export interface HomeNixOSModuleOptions {
-  readonly users: { readonly [username: string]: NixValue };
+  readonly users: { readonly [username: string]: NixInput };
 }
 
 export const Home = {
