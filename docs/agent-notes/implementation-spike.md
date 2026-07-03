@@ -110,7 +110,7 @@ project-local option-generation slices:
 8. Verify with typecheck, lint, runtime tests, type tests, generated Nix, and the repository flake check. Done.
 9. Add project-local option probe/generate commands backed by a nested fixture flake lock. Done.
 10. Prepare and publish a public npm alpha for name reservation and early
-    testing. In progress.
+    testing. Done.
 
 ## Verification Status
 
@@ -187,8 +187,12 @@ tsconfig.json`.
     unauthenticated dry-run output.
   - `tsdown` currently emits a non-fatal declaration sourcemap warning from
     `rolldown-plugin-dts:fake-js`; build exits successfully.
-  - `npm whoami` reported `ENEEDAUTH`, so final publish requires user npm
-    login and any account 2FA flow.
+  - `typeflake@0.0.1-alpha.0` was published publicly on npm on 2026-07-03.
+  - Public registry smoke test passed with `npm install --save-dev
+typeflake@next`, `typeflake --version`, importing `typeflake`, consumer
+    `tsgo --noEmit`, and installed `typeflake doctor --project tsconfig.json`.
+  - First publish assigned both `next` and `latest` dist-tags to
+    `0.0.1-alpha.0`; removing `latest` requires another npm write 2FA flow.
 
 ## Tooling Notes
 
