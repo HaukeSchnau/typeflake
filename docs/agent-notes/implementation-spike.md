@@ -50,14 +50,21 @@ Build the first Typeflake implementation spike:
     removing the previous input-ref map assertion.
 - Testing:
   - Runtime tests use `@effect/vitest`.
+  - Exact positive type-level assertions use `@arktype/attest` inside Vitest.
+    Negative compile-fail contracts still use `@ts-expect-error`.
   - Type-level contracts live in Vitest files so `tsgo` validates them during
     `nub run check`.
+  - Attest runs through Vitest global setup in `test/setup-attest.ts` and writes
+    transient assertion cache files under ignored `.attest/`.
   - Regression tests cover input-name mismatch rejection at both helper and
     constructor boundaries, user attrsets with `tag` keys, renderer output, taint
     values, and doctor process handling.
   - `@effect/vitest@4.0.0-beta.93` currently needs an explicit
     `@vitest/runner@4.1.4` package extension because its published package
     metadata imports that package at runtime but lists it only as a devDependency.
+  - `@arktype/attest@0.56.2` requires a `typescript` devDependency for its
+    compiler-API type capture. This does not replace the project check policy:
+    oxlint native type-aware checks and Effect TSGO remain in `nub run check`.
 
 ## Current Plan
 
@@ -98,6 +105,10 @@ examples/basic/flake.generated.nix` passes and verifies the generated Nix flake.
     checked input names at constructor boundaries, branding internal Nix AST
     values with a private symbol so user `tag` attrsets remain data, and making
     doctor tests command-sensitive rather than spawn-order-sensitive.
+- Attest type-test pass:
+  - `nub run check` passes with Attest's TypeScript assertion capture enabled.
+  - Positive taint and flake-shape assertions moved from assignment-based checks
+    to exact `attest<expected, actual>()` assertions.
 
 ## Tooling Notes
 
@@ -115,6 +126,9 @@ examples/basic/flake.generated.nix` passes and verifies the generated Nix flake.
   exits through the local Node/libuv assertion after install. Use `nub install
 --ignore-scripts` for normal workflow; pnpm should be treated as a fallback only
   on this machine.
+- `make-synchronized@0.8.0`, reached through Attest's Prettier integration,
+  needs a package extension so `prettier@3.6.2` is visible from its runtime
+  island under Nub/pnpm's isolated install layout.
 
 ## Open Questions
 

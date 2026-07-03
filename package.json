@@ -34,6 +34,7 @@
     "effect": "4.0.0-beta.93"
   },
   "devDependencies": {
+    "@arktype/attest": "0.56.2",
     "@effect/tsgo": "0.16.0",
     "@effect/vitest": "4.0.0-beta.93",
     "@types/node": "24.10.0",
@@ -42,6 +43,7 @@
     "oxfmt": "0.57.0",
     "oxlint": "1.72.0",
     "oxlint-tsgolint": "0.24.0",
+    "typescript": "5.9.3",
     "vitest": "4.1.4"
   },
   "packageManager": "pnpm@11.9.0"
