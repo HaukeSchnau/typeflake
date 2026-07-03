@@ -1,5 +1,6 @@
 import * as Effect from "effect/Effect";
 import { runCommandExitCode } from "./process.ts";
+import { effectTsgoCommand, tsgoCommand } from "./tooling.ts";
 
 export interface DoctorOptions {
   readonly project?: string;
@@ -22,10 +23,10 @@ export const doctor = (options: DoctorOptions = {}) =>
     const checks = yield* Effect.all(
       [
         checkCommand("Nix", "nix", ["--version"]),
-        checkCommand("Nub", "nub", ["--version"]),
-        checkCommand("TypeScript-Go", "tsgo", ["--version"]),
-        checkCommand("Effect TSGO", "effect-tsgo", ["get-exe-path"]),
-        checkCommand("Project TypeScript", "tsgo", ["--noEmit", "--project", project]),
+        checkCommand("Node", "node", ["--version"]),
+        checkCommand("TypeScript-Go", tsgoCommand(), ["--version"]),
+        checkCommand("Effect TSGO", effectTsgoCommand(), ["get-exe-path"]),
+        checkCommand("Project TypeScript", tsgoCommand(), ["--noEmit", "--project", project]),
       ],
       { concurrency: "unbounded" },
     );

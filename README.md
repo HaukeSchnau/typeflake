@@ -101,6 +101,23 @@ The option bridge now has a narrow working vertical slice:
 Deployment and broader orchestration are intentionally later milestones. The
 first bet to prove is the type model.
 
+## Install
+
+This is a very early alpha. The package is published for experimentation and
+name reservation, not for production use yet.
+
+```sh
+npm install --save-dev typeflake@next
+```
+
+Typeflake currently expects Node.js 22 or newer. It also ships with
+TypeScript-Go Native Preview and the Effect TSGO plugin so the CLI can run its
+own authoring checks after installation.
+
+For consumer projects on this alpha, use ESM/NodeNext TypeScript settings. While
+Effect v4 and TypeScript-Go are both still moving, `skipLibCheck` may be needed
+in downstream projects that import Typeflake's declarations.
+
 ## Generated Type Lifecycle
 
 Generated option types belong to the consuming project. Typeflake reads that

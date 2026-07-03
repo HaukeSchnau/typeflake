@@ -5,6 +5,7 @@ import * as Path from "effect/Path";
 import { FlakeImportError, TypeScriptCheckFailed } from "./errors.ts";
 import { type FlakeModule, renderFlake, resolveFlakeSpec } from "./flake.ts";
 import { runCommandExitCode } from "./process.ts";
+import { tsgoCommand } from "./tooling.ts";
 
 export interface SyncOptions {
   readonly input: string;
@@ -47,7 +48,7 @@ const runTypeScriptCheck = (project: string) =>
   Effect.gen(function* () {
     const exitCode = yield* runCommandExitCode({
       args: ["--noEmit", "--project", project],
-      command: "tsgo",
+      command: tsgoCommand(),
       stderr: "inherit",
       stdin: "inherit",
       stdout: "inherit",

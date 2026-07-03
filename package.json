@@ -1,7 +1,6 @@
 {
   "name": "typeflake",
-  "version": "0.0.0",
-  "private": true,
+  "version": "0.0.1-alpha.0",
   "description": "TypeScript and Effect authoring for real Nix flakes.",
   "keywords": [
     "effect",
@@ -10,41 +9,71 @@
     "nixos",
     "typescript"
   ],
-  "license": "MIT",
-  "bin": {
-    "typeflake": "./src/cli.ts"
+  "homepage": "https://git.schnau.dev/schnau/typeflake",
+  "bugs": {
+    "url": "https://git.schnau.dev/schnau/typeflake/issues"
   },
+  "license": "MIT",
+  "author": "Hauke Schnau <hauke@schnau.dev>",
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@git.schnau.dev/schnau/typeflake.git"
+  },
+  "bin": {
+    "typeflake": "bin/typeflake.js"
+  },
+  "files": [
+    "bin",
+    "dist",
+    "LICENSE",
+    "README.md"
+  ],
   "type": "module",
+  "types": "./dist/index.d.mts",
   "exports": {
-    ".": "./src/index.ts"
+    ".": {
+      "types": "./dist/index.d.mts",
+      "import": "./dist/index.mjs"
+    }
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "scripts": {
+    "build": "tsdown src/index.ts src/cli.ts --format esm --dts --out-dir dist --clean --target node22 --platform node",
     "check": "nub run check:types && nub run check:effect && nub run lint && nub run test && nub run format:check",
     "check:effect": "tsgo --noEmit --project tsconfig.json",
     "check:types": "oxlint . --type-aware --type-check --deny-warnings",
     "format": "oxfmt .",
     "format:check": "oxfmt . --check",
     "lint": "oxlint . --type-aware --deny-warnings --report-unused-disable-directives",
+    "pack:dry": "npm pack --dry-run",
+    "prepack": "nub run build",
+    "prepublishOnly": "nub run check",
     "test": "vitest run",
     "tsgo:patch": "effect-tsgo patch",
     "typeflake": "nub src/cli.ts"
   },
   "dependencies": {
     "@effect/platform-node": "4.0.0-beta.93",
+    "@effect/tsgo": "0.16.0",
+    "@typescript/native-preview": "7.0.0-dev.20260703.1",
     "effect": "4.0.0-beta.93"
   },
   "devDependencies": {
     "@arktype/attest": "0.56.2",
-    "@effect/tsgo": "0.16.0",
     "@effect/vitest": "4.0.0-beta.93",
     "@types/node": "24.10.0",
-    "@typescript/native-preview": "7.0.0-dev.20260703.1",
     "@vitest/runner": "4.1.4",
     "oxfmt": "0.57.0",
     "oxlint": "1.72.0",
     "oxlint-tsgolint": "0.24.0",
+    "tsdown": "0.22.3",
     "typescript": "5.9.3",
     "vitest": "4.1.4"
+  },
+  "engines": {
+    "node": ">=22"
   },
   "packageManager": "pnpm@11.9.0"
 }

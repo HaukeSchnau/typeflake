@@ -23,13 +23,13 @@ const mockHandle = (exitCode: number) =>
     unref: Effect.succeed(Effect.void),
   });
 
-const mockSpawnerLayer = (exitCodes: Readonly<Record<string, number>>) =>
+const mockSpawnerLayer = (exitCodeForCommand: (commandLine: string) => number = () => 0) =>
   Layer.succeed(
     ChildProcessSpawner.ChildProcessSpawner,
     ChildProcessSpawner.make((command) => {
       const commandLine =
         "command" in command ? `${command.command} ${command.args.join(" ")}` : "";
-      const exitCode = exitCodes[commandLine] ?? 0;
+      const exitCode = exitCodeForCommand(commandLine);
       return Effect.succeed(mockHandle(exitCode));
     }),
   );
@@ -37,12 +37,12 @@ const mockSpawnerLayer = (exitCodes: Readonly<Record<string, number>>) =>
 describe("doctor", () => {
   it.effect("reports healthy tooling when all commands pass", () =>
     Effect.gen(function* () {
-      const report = yield* doctor().pipe(Effect.provide(mockSpawnerLayer({})));
+      const report = yield* doctor().pipe(Effect.provide(mockSpawnerLayer()));
 
       assert.equal(report.ok, true);
       assert.deepEqual(
         report.checks.map((check) => check.name),
-        ["Nix", "Nub", "TypeScript-Go", "Effect TSGO", "Project TypeScript"],
+        ["Nix", "Node", "TypeScript-Go", "Effect TSGO", "Project TypeScript"],
       );
     }),
   );
@@ -50,7 +50,9 @@ describe("doctor", () => {
   it.effect("reports failed commands without failing the Effect", () =>
     Effect.gen(function* () {
       const report = yield* doctor().pipe(
-        Effect.provide(mockSpawnerLayer({ "tsgo --version": 1 })),
+        Effect.provide(
+          mockSpawnerLayer((commandLine) => (commandLine.endsWith("/bin/tsgo --version") ? 1 : 0)),
+        ),
       );
 
       assert.equal(report.ok, false);
