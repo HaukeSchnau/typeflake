@@ -46,4 +46,3 @@ first bet to prove is the type model.
 
 Pre-implementation. The initial repository captures the product direction and
 the first technical spike.
-

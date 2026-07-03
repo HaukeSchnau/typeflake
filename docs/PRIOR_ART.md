@@ -80,4 +80,3 @@ flake.ts -> generated Nix -> nix flake check
 Links:
 
 - https://github.com/ryanrasti/typenix
-

@@ -143,4 +143,3 @@ The first meaningful proof is:
 6. A real NixOS configuration can be built from the generated flake.
 
 If that loop works, the project has a heartbeat.
-

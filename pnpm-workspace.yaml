@@ -1,0 +1,11 @@
+packages:
+  - "."
+
+trustPolicy: no-downgrade
+trustPolicyExclude:
+  # Effect v4 beta packages currently use different provenance evidence than
+  # earlier stable releases. Keep Nub's trust policy on and narrow the exception
+  # to these pinned beta packages.
+  - "effect@4.0.0-beta.93"
+  - "@effect/platform-node@4.0.0-beta.93"
+  - "@effect/platform-node-shared@4.0.0-beta.93"
