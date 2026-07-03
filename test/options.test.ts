@@ -35,23 +35,26 @@ const fixtureOptions: readonly OptionIR[] = [...fixture.nixos, ...fixture.homeMa
 );
 
 describe("option bridge", () => {
-  it.effect("evaluates pinned NixOS and Home Manager options through the Nix probe", () =>
-    Effect.gen(function* () {
-      const expression = renderOptionProbeExpression({
-        homeManager: flakeInput("home-manager"),
-        homeManagerOptions: { optionPaths: defaultHomeManagerOptionPaths },
-        nixosOptions: { optionPaths: defaultNixOSOptionPaths },
-        nixpkgs: flakeInput("nixpkgs"),
-        system: "x86_64-linux",
-      });
+  it.effect(
+    "evaluates pinned NixOS and Home Manager options through the Nix probe",
+    () =>
+      Effect.gen(function* () {
+        const expression = renderOptionProbeExpression({
+          homeManager: flakeInput("home-manager"),
+          homeManagerOptions: { optionPaths: defaultHomeManagerOptionPaths },
+          nixosOptions: { optionPaths: defaultNixOSOptionPaths },
+          nixpkgs: flakeInput("nixpkgs"),
+          system: "x86_64-linux",
+        });
 
-      const output = yield* runCommandString({
-        args: ["eval", "--impure", "--json", "--expr", expression],
-        command: "nix",
-      });
+        const output = yield* runCommandString({
+          args: ["eval", "--impure", "--json", "--expr", expression],
+          command: "nix",
+        });
 
-      assert.deepEqual(JSON.parse(output), fixture);
-    }).pipe(Effect.provide(NodeServices.layer)),
+        assert.deepEqual(JSON.parse(output), fixture);
+      }).pipe(Effect.provide(NodeServices.layer)),
+    30_000,
   );
 
   it.effect("generates TypeScript option declarations from option metadata", () =>
@@ -72,7 +75,10 @@ describe("option bridge", () => {
       assert.match(nixosTypes, /readonly services\?:/);
       assert.match(nixosTypes, /readonly enable\?: NixOptionValue<boolean>/);
       assert.match(nixosTypes, /readonly systemPackages\?: NixOptionValue<readonly NixInput\[]>/);
-      assert.match(homeTypes, /readonly stateVersion\?: NixOptionValue<string>/);
+      assert.match(
+        homeTypes,
+        /readonly stateVersion\?: NixOptionValue<\s+\| "18\.09"\s+\| "19\.03"/,
+      );
       assert.match(homeTypes, /readonly git\?:/);
     }),
   );

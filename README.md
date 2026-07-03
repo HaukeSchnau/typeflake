@@ -118,6 +118,29 @@ For consumer projects on this alpha, use ESM/NodeNext TypeScript settings. While
 Effect v4 and TypeScript-Go are both still moving, `skipLibCheck` may be needed
 in downstream projects that import Typeflake's declarations.
 
+## Start A Project
+
+Use `init` to create a minimal consumer project skeleton:
+
+```sh
+typeflake init
+```
+
+It creates `flake.ts`, `tsconfig.json`, `.typeflake/options.ts`, and starter
+package scripts without overwriting existing files. Use `--force` only when you
+want to replace those starter files.
+
+The generated `flake.ts` imports project-local option types from
+`.typeflake/options.ts`. That file starts as a placeholder so the project
+typechecks immediately, then gets replaced by real pinned option declarations
+after running:
+
+```sh
+typeflake options probe --scope nixos
+typeflake options generate
+typeflake check
+```
+
 ## Generated Type Lifecycle
 
 Generated option types belong to the consuming project. Typeflake reads that
@@ -151,7 +174,9 @@ The trust boundary is intentionally simple:
 
 Unsupported option shapes are never erased into `any`. The generator keeps them
 explicit with `UnsupportedNixOption<...>` escape hatches, and
-`typeflake options generate --strict` fails if any remain.
+`typeflake options generate --strict` fails if any remain. Use
+`unsupportedNixOption(description, rawNixCode)` when you intentionally accept one
+of those explicit escape hatches.
 
 ## Documents
 

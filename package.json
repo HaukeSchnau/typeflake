@@ -1,6 +1,6 @@
 {
   "name": "typeflake",
-  "version": "0.0.1-alpha.0",
+  "version": "0.0.1-alpha.1",
   "description": "TypeScript and Effect authoring for real Nix flakes.",
   "keywords": [
     "effect",
@@ -41,12 +41,13 @@
   },
   "scripts": {
     "build": "tsdown src/index.ts src/cli.ts --format esm --dts --out-dir dist --clean --target node22 --platform node",
-    "check": "nub run check:types && nub run check:effect && nub run lint && nub run test && nub run format:check",
+    "check": "nub run check:types && nub run check:effect && nub run lint && nub run test && nub run package:smoke && nub run format:check",
     "check:effect": "tsgo --noEmit --project tsconfig.json",
     "check:types": "oxlint . --type-aware --type-check --deny-warnings",
     "format": "oxfmt .",
     "format:check": "oxfmt . --check",
     "lint": "oxlint . --type-aware --deny-warnings --report-unused-disable-directives",
+    "package:smoke": "nub run build && nub scripts/package-smoke.ts",
     "pack:dry": "npm pack --dry-run",
     "prepack": "nub run build",
     "prepublishOnly": "nub run check",

@@ -25,40 +25,48 @@ describe("project-local option generation commands", () => {
     }).pipe(Effect.provide(NodeServices.layer)),
   );
 
-  it.effect("probes a project flake with non-default input names and generates types", () =>
-    Effect.gen(function* () {
-      const fs = yield* FileSystem.FileSystem;
-      const path = yield* Path.Path;
-      const directory = yield* fs.makeTempDirectory({ prefix: "typeflake-options-" });
-      const metadataPath = path.join(directory, "options.json");
-      const generatedPath = path.join(directory, "options.ts");
+  it.effect(
+    "probes a project flake with non-default input names and generates types",
+    () =>
+      Effect.gen(function* () {
+        const fs = yield* FileSystem.FileSystem;
+        const path = yield* Path.Path;
+        const directory = yield* fs.makeTempDirectory({ prefix: "typeflake-options-" });
+        const metadataPath = path.join(directory, "options.json");
+        const generatedPath = path.join(directory, "options.ts");
 
-      const document = yield* probeProjectOptions({
-        flake: fixtureFlakePath,
-        homeManagerInput: "fixture-home-manager",
-        nixpkgsInput: "fixture-nixpkgs",
-        output: metadataPath,
-        scopes: ["nixos", "home-manager"],
-        system: "x86_64-linux",
-      });
+        const document = yield* probeProjectOptions({
+          flake: fixtureFlakePath,
+          homeManagerInput: "fixture-home-manager",
+          nixpkgsInput: "fixture-nixpkgs",
+          output: metadataPath,
+          scopes: ["nixos", "home-manager"],
+          system: "x86_64-linux",
+        });
 
-      assert.equal(document.source.nixpkgsInput, "fixture-nixpkgs");
-      assert.equal(document.source.homeManagerInput, "fixture-home-manager");
-      assert.deepEqual(document.source.scopes, ["home-manager", "nixos"]);
-      assert.ok(hasOption(document.options, "nixos", ["services", "nginx", "enable"]));
-      assert.ok(hasOption(document.options, "home-manager", ["home", "packages"]));
+        assert.equal(document.source.nixpkgsInput, "fixture-nixpkgs");
+        assert.equal(document.source.homeManagerInput, "fixture-home-manager");
+        assert.deepEqual(document.source.scopes, ["home-manager", "nixos"]);
+        assert.ok(hasOption(document.options, "nixos", ["services", "nginx", "enable"]));
+        assert.ok(hasOption(document.options, "home-manager", ["home", "packages"]));
 
-      const { unsupported } = yield* generateProjectOptionTypes({
-        input: metadataPath,
-        output: generatedPath,
-      });
-      const generated = yield* fs.readFileString(generatedPath);
+        const { unsupported } = yield* generateProjectOptionTypes({
+          input: metadataPath,
+          output: generatedPath,
+        });
+        const generated = yield* fs.readFileString(generatedPath);
 
-      assert.equal(unsupported.length, 0);
-      assert.match(generated, /import type \{ NixExpr, NixInput \} from "typeflake"/);
-      assert.match(generated, /readonly allowedTCPPorts\?: NixOptionValue<readonly number\[]>/);
-      assert.match(generated, /readonly packages\?: NixOptionValue<readonly NixInput\[]>/);
-    }).pipe(Effect.provide(NodeServices.layer)),
+        assert.equal(unsupported.length, 0);
+        assert.match(
+          generated,
+          /import type \{ NixExpr, NixInput, UnsupportedNixOptionExpr \} from "typeflake"/,
+        );
+        assert.match(generated, /readonly allowedTCPPorts\?: NixOptionValue<readonly number\[]>/);
+        assert.match(generated, /readonly packages\?: NixOptionValue<readonly NixInput\[]>/);
+        assert.match(generated, /export namespace NixOSOptions/);
+        assert.match(generated, /export const unsupportedNixOptions = \[\] as const/);
+      }).pipe(Effect.provide(NodeServices.layer)),
+    30_000,
   );
 
   it.effect("fails clearly in strict mode when option shapes remain unsupported", () =>

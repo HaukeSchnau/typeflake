@@ -1,7 +1,16 @@
 import * as Effect from "effect/Effect";
 import { assert, describe, it } from "@effect/vitest";
 import { attest } from "@arktype/attest";
-import { Flake, NixOS, pkgs, type Home, type TypeflakeFlake } from "../src/index.ts";
+import {
+  Flake,
+  NixOS,
+  pkgs,
+  rawNix,
+  unsupportedNixOption,
+  type Home,
+  type TypeflakeFlake,
+  type UnsupportedNixOption,
+} from "../src/index.ts";
 
 const inputs = Flake.inputs({
   nixpkgs: Flake.input("nixpkgs", "github:NixOS/nixpkgs/nixos-unstable"),
@@ -94,6 +103,10 @@ describe("type-level contracts", () => {
     attest<TypeflakeFlake<typeof inputs>, typeof pure>();
     attest<NixOS.Config, typeof typedNixOSConfig>();
     attest<Home.Config, typeof typedHomeConfig>();
+    attest<
+      UnsupportedNixOption<"mystery: mystery value">,
+      ReturnType<typeof unsupportedNixOption<"mystery: mystery value">>
+    >();
 
     assert.equal(pure.taint, "pure");
     assert.equal(effectful.taint, "effect");
@@ -147,3 +160,32 @@ NixOS.config({
     hostName: 1234,
   },
 });
+
+interface UnsupportedFixtureConfig {
+  readonly services?: {
+    readonly mystery?: {
+      readonly enable?: UnsupportedNixOption<"mystery: mystery value">;
+    };
+  };
+}
+
+const typedUnsupportedConfig: UnsupportedFixtureConfig = {
+  services: {
+    mystery: {
+      enable: unsupportedNixOption("mystery: mystery value", "config.services.mystery.enable"),
+    },
+  },
+};
+
+typedUnsupportedConfig satisfies UnsupportedFixtureConfig;
+
+const unsupportedWithRawNix: UnsupportedFixtureConfig = {
+  services: {
+    mystery: {
+      // @ts-expect-error Unsupported options must use unsupportedNixOption, not plain rawNix.
+      enable: rawNix("config.services.mystery.enable"),
+    },
+  },
+};
+
+void unsupportedWithRawNix;

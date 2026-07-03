@@ -111,6 +111,9 @@ project-local option-generation slices:
 9. Add project-local option probe/generate commands backed by a nested fixture flake lock. Done.
 10. Prepare and publish a public npm alpha for name reservation and early
     testing. Done.
+11. Add the first consumer project loop: `typeflake init`, installed-package
+    smoke tests, better generated option declarations, and alpha.1 metadata.
+    In progress.
 
 ## Verification Status
 
@@ -193,6 +196,19 @@ typeflake@next`, `typeflake --version`, importing `typeflake`, consumer
     `tsgo --noEmit`, and installed `typeflake doctor --project tsconfig.json`.
   - First publish assigned both `next` and `latest` dist-tags to
     `0.0.1-alpha.0`; removing `latest` requires another npm write 2FA flow.
+- Consumer loop slice:
+  - `typeflake init` creates idempotent starter files for a consuming project
+    and leaves existing files untouched unless `--force` is passed.
+  - `sync` and `check` accept `--project` so consumer projects are not forced
+    through an implicit `tsconfig.json`.
+  - Generated option declarations now include option comments, enum literal
+    unions, `NixOSOptions` / `HomeManagerOptions` namespaces, and deterministic
+    `unsupportedNixOptions` metadata.
+  - Unsupported generated options use the public `unsupportedNixOption(...)`
+    helper instead of pretending `rawNix(...)` has the right branded type.
+  - `nub run package:smoke` builds, packs, installs into a temporary consumer
+    project, runs `typeflake init`, checks idempotency, typechecks the consumer,
+    and runs installed `typeflake sync`.
 
 ## Tooling Notes
 

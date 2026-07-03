@@ -7,6 +7,7 @@ import { Command, Flag } from "effect/unstable/cli";
 import { check } from "./check.ts";
 import { doctor, renderDoctorReport } from "./doctor.ts";
 import { DoctorFailed } from "./errors.ts";
+import { initProject, renderInitSummary, type InitPackageManager } from "./init.ts";
 import {
   defaultOptionScopes,
   generateProjectOptionTypes,
@@ -29,15 +30,46 @@ const flakeFileFlags = {
     Flag.withDescription("Generated Nix flake path"),
     Flag.withDefault("flake.nix"),
   ),
+  project: Flag.string("project").pipe(
+    Flag.withAlias("p"),
+    Flag.withDescription("TypeScript project checked before loading flake.ts"),
+    Flag.withDefault("tsconfig.json"),
+  ),
 };
 
 const syncCommand = Command.make("sync", flakeFileFlags, (options) =>
   sync(options).pipe(Effect.flatMap(() => Console.log(`Generated ${options.output}`))),
 ).pipe(Command.withDescription("Generate a Nix flake from flake.ts"));
 
-const checkCommand = Command.make("check", flakeFileFlags, (options) => check(options)).pipe(
-  Command.withDescription("Generate a Nix flake and run nix flake check"),
-);
+const checkCommand = Command.make("check", flakeFileFlags, (options) =>
+  check(options).pipe(
+    Effect.flatMap(() => Console.log(`Checked generated flake at ${options.output}`)),
+  ),
+).pipe(Command.withDescription("Generate a Nix flake and run nix flake check"));
+
+const initCommand = Command.make(
+  "init",
+  {
+    directory: Flag.string("directory").pipe(
+      Flag.withAlias("d"),
+      Flag.withDescription("Project directory to initialize"),
+      Flag.withDefault("."),
+    ),
+    force: Flag.boolean("force").pipe(
+      Flag.withDescription("Overwrite existing Typeflake starter files"),
+    ),
+    packageManager: Flag.choice("package-manager", ["bun", "npm", "pnpm"]).pipe(
+      Flag.withDescription("Package manager recorded in the starter package.json"),
+      Flag.withDefault("npm"),
+    ),
+  },
+  (options) =>
+    initProject({
+      directory: options.directory,
+      force: options.force,
+      packageManager: normalizePackageManager(options.packageManager),
+    }).pipe(Effect.flatMap((result) => Console.log(renderInitSummary(result, options.directory)))),
+).pipe(Command.withDescription("Create a minimal Typeflake project"));
 
 const optionScopeFlag = Flag.choice("scope", ["nixos", "home-manager"]).pipe(
   Flag.atLeast(0),
@@ -80,7 +112,9 @@ const optionsProbeCommand = Command.make(
       system: options.system,
     }).pipe(
       Effect.flatMap((document) =>
-        Console.log(`Wrote ${document.options.length} option records to ${options.output}`),
+        Console.log(
+          `Wrote ${document.options.length} option records to ${options.output} from ${document.source.flake}`,
+        ),
       ),
     ),
 ).pipe(Command.withDescription("Probe project-local pinned Nix option metadata"));
@@ -145,11 +179,22 @@ const doctorCommand = Command.make(
 
 const command = Command.make("typeflake").pipe(
   Command.withDescription("TypeScript and Effect authoring for real Nix flakes"),
-  Command.withSubcommands([syncCommand, checkCommand, doctorCommand, optionsCommand]),
+  Command.withSubcommands([initCommand, syncCommand, checkCommand, doctorCommand, optionsCommand]),
 );
 
 const normalizeCliScopes = (scopes: readonly OptionScope[]): readonly OptionScope[] =>
   scopes.length === 0 ? defaultOptionScopes : scopes;
+
+const normalizePackageManager = (packageManager: string): InitPackageManager => {
+  switch (packageManager) {
+    case "bun":
+    case "npm":
+    case "pnpm":
+      return packageManager;
+    default:
+      return "npm";
+  }
+};
 
 const renderUnsupportedSummary = (count: number): string =>
   count === 0 ? "" : ` (${count} unsupported option shapes kept explicit)`;
