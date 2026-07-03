@@ -7,6 +7,11 @@ packageExtensions:
       # @effect/vitest imports this at runtime but currently lists it only as a
       # devDependency in the published package metadata.
       "@vitest/runner": "4.1.4"
+  "make-synchronized@0.8.0":
+    dependencies:
+      # make-synchronized can run @prettier/sync's worker-side module load where
+      # prettier must be visible from the helper package's runtime island.
+      prettier: "3.6.2"
 
 trustPolicy: no-downgrade
 trustPolicyExclude:

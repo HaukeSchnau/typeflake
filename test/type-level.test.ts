@@ -1,5 +1,6 @@
 import * as Effect from "effect/Effect";
 import { assert, describe, it } from "@effect/vitest";
+import { attest } from "@arktype/attest";
 import { Flake, type TypeflakeFlake } from "../src/flake.ts";
 
 const inputs = Flake.inputs({
@@ -31,15 +32,14 @@ const impure = Flake.impure(
 
 describe("type-level contracts", () => {
   it("keeps compile-time flake taint and input guarantees", () => {
-    const pureTaint: "pure" = pure.taint;
-    const effectTaint: "effect" = effectful.taint;
-    const impureTaint: "impure" = impure.taint;
-    const typedPure: TypeflakeFlake<typeof inputs> = pure;
+    attest<"pure", typeof pure.taint>();
+    attest<"effect", typeof effectful.taint>();
+    attest<"impure", typeof impure.taint>();
+    attest<TypeflakeFlake<typeof inputs>, typeof pure>();
 
-    assert.equal(pureTaint, "pure");
-    assert.equal(effectTaint, "effect");
-    assert.equal(impureTaint, "impure");
-    assert.equal(typedPure.taint, "pure");
+    assert.equal(pure.taint, "pure");
+    assert.equal(effectful.taint, "effect");
+    assert.equal(impure.taint, "impure");
   });
 });
 
