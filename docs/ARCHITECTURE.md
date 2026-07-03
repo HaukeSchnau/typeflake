@@ -124,10 +124,9 @@ types.path         -> NixPath | string
 Unsupported option types should become explicit unsupported types, not `any`.
 
 ```ts
-type UnsupportedNixType<Description extends string> =
-  NixExpr<"unsupported", unknown> & {
-    readonly __unsupportedNixType: Description;
-  };
+type UnsupportedNixType<Description extends string> = NixExpr<"unsupported", unknown> & {
+  readonly __unsupportedNixType: Description;
+};
 ```
 
 ### Packages
@@ -156,10 +155,7 @@ The core should type common functions and combinators, then expose explicit
 annotations for custom functions:
 
 ```ts
-const packageFile = nixFn<
-  { lib: Lib; stdenv: Stdenv },
-  Derivation
->("./package.nix");
+const packageFile = nixFn<{ lib: Lib; stdenv: Stdenv }, Derivation>("./package.nix");
 ```
 
 ## Effect Model
@@ -192,17 +188,9 @@ Likely errors:
 Generation-time effects should carry taints in the type system.
 
 ```ts
-type Taint =
-  | "pure"
-  | "env"
-  | "filesystem"
-  | "process"
-  | "network"
-  | "time"
-  | "host";
+type Taint = "pure" | "env" | "filesystem" | "process" | "network" | "time" | "host";
 
-type Gen<A, T extends Taint = "pure"> =
-  Effect.Effect<A> & { readonly __taint?: T };
+type Gen<A, T extends Taint = "pure"> = Effect.Effect<A> & { readonly __taint?: T };
 ```
 
 Taints should compose. A flake produced from `Env.string("USER")` is not pure.
@@ -210,10 +198,14 @@ Taints should compose. A flake produced from `Env.string("USER")` is not pure.
 ```ts
 const username = Env.string("USER");
 
-export default Flake.make(Effect.gen(function* () {
-  const user = yield* username;
-  return { /* outputs */ };
-}));
+export default Flake.make(
+  Effect.gen(function* () {
+    const user = yield* username;
+    return {
+      /* outputs */
+    };
+  }),
+);
 ```
 
 `typeflake sync` should record and display taints in generated metadata.
@@ -250,4 +242,3 @@ Typeflake should borrow ideas from TypeNix around:
 - and LSP-quality feedback.
 
 It should not duplicate TypeNix's core mission unless that becomes necessary.
-

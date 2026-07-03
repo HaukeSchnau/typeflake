@@ -180,4 +180,3 @@ The spike is complete when:
 - `typeflake check` runs successfully against a tiny real flake,
 - at least one generated option type is consumed from `flake.ts`,
 - and taint metadata appears for an environment-backed value.
-

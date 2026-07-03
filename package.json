@@ -3,18 +3,38 @@
   "version": "0.0.0",
   "private": true,
   "description": "TypeScript and Effect authoring for real Nix flakes.",
-  "type": "module",
-  "license": "MIT",
-  "scripts": {
-    "check": "node -e \"console.log('No implementation checks configured yet.')\"",
-    "format": "node -e \"console.log('No formatter configured yet.')\""
-  },
   "keywords": [
+    "effect",
+    "flakes",
     "nix",
     "nixos",
-    "flakes",
-    "typescript",
-    "effect"
+    "typescript"
   ],
-  "devDependencies": {}
+  "license": "MIT",
+  "bin": {
+    "typeflake": "./src/cli.ts"
+  },
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "check": "nub run check:types && nub run lint && nub run format:check",
+    "check:types": "tsc --noEmit",
+    "format": "oxfmt .",
+    "format:check": "oxfmt . --check",
+    "lint": "oxlint . --tsconfig tsconfig.json",
+    "typeflake": "nub src/cli.ts"
+  },
+  "dependencies": {
+    "@effect/platform-node": "4.0.0-beta.93",
+    "effect": "4.0.0-beta.93"
+  },
+  "devDependencies": {
+    "@types/node": "24.10.0",
+    "oxfmt": "0.57.0",
+    "oxlint": "1.72.0",
+    "typescript": "6.0.3"
+  },
+  "packageManager": "pnpm@11.9.0"
 }
