@@ -1,59 +1,51 @@
 import * as Effect from "effect/Effect";
-import { copyFile, mkdtemp } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { basename, dirname, join, resolve } from "node:path";
-import { spawn } from "node:child_process";
+import * as FileSystem from "effect/FileSystem";
+import * as Path from "effect/Path";
+import { ChildProcess, ChildProcessSpawner } from "effect/unstable/process";
+import { NixCheckFailed } from "./errors.ts";
 import { sync, type SyncOptions } from "./sync.ts";
 
 export interface CheckOptions extends SyncOptions {
   readonly noBuild?: boolean;
 }
 
-export const check = (options: CheckOptions): Effect.Effect<void, Error> =>
+export const check = (options: CheckOptions) =>
   Effect.gen(function* () {
     yield* sync(options);
 
-    const target = yield* Effect.tryPromise({
-      try: () => prepareFlakeTarget(options.output),
-      catch: (error) => (error instanceof Error ? error : new Error(String(error))),
-    });
-
+    const target = yield* prepareFlakeTarget(options.output);
     yield* runNixFlakeCheck(target, options.noBuild ?? true);
   });
 
-const prepareFlakeTarget = async (output: string): Promise<string> => {
-  const outputPath = resolve(output);
+const prepareFlakeTarget = (output: string) =>
+  Effect.gen(function* () {
+    const fs = yield* FileSystem.FileSystem;
+    const path = yield* Path.Path;
+    const outputPath = path.resolve(output);
 
-  if (basename(outputPath) === "flake.nix") {
-    return dirname(outputPath);
-  }
+    if (path.basename(outputPath) === "flake.nix") {
+      return path.dirname(outputPath);
+    }
 
-  const directory = await mkdtemp(join(tmpdir(), "typeflake-check-"));
-  await copyFile(outputPath, join(directory, "flake.nix"));
-  return directory;
-};
+    const directory = yield* fs.makeTempDirectory({ prefix: "typeflake-check-" });
+    yield* fs.copyFile(outputPath, path.join(directory, "flake.nix"));
+    return directory;
+  });
 
-const runNixFlakeCheck = (target: string, noBuild: boolean): Effect.Effect<void, Error> =>
-  Effect.tryPromise({
-    try: () =>
-      new Promise<void>((resolvePromise, reject) => {
-        const args = ["flake", "check"];
-        if (noBuild) args.push("--no-build");
-        args.push(target);
+const runNixFlakeCheck = (target: string, noBuild: boolean) =>
+  Effect.gen(function* () {
+    const process = yield* ChildProcessSpawner.ChildProcessSpawner;
+    const args = noBuild ? ["flake", "check", "--no-build", target] : ["flake", "check", target];
+    const command = ChildProcess.make("nix", args, {
+      stderr: "inherit",
+      stdin: "inherit",
+      stdout: "inherit",
+    });
+    const exitCode = yield* process.exitCode(command);
 
-        const child = spawn("nix", args, {
-          stdio: "inherit",
-        });
+    if (exitCode !== 0) {
+      return yield* new NixCheckFailed({ exitCode, target });
+    }
 
-        child.on("error", reject);
-        child.on("exit", (code) => {
-          if (code === 0) {
-            resolvePromise();
-            return;
-          }
-
-          reject(new Error(`nix flake check exited with code ${code ?? "unknown"}`));
-        });
-      }),
-    catch: (error) => (error instanceof Error ? error : new Error(String(error))),
+    return undefined;
   });

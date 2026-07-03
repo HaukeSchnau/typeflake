@@ -10,26 +10,16 @@ interface KnownTopLevelPackages {
   readonly nodejs: PackageRef<"nodejs">;
 }
 
-type PackageSet<Path extends string = ""> = PackageRef<Path> & {
-  readonly [key: string]: PackageSet<Path extends "" ? string : `${Path}.${string}`>;
-} & (Path extends "" ? KnownTopLevelPackages : {});
-
-const createPackageProxy = (parts: readonly string[]): PackageSet => {
-  const expr = nixAttrPath("package", ["pkgs", ...parts]) as PackageRef;
-
-  return new Proxy(expr, {
-    get(target, property, receiver) {
-      if (typeof property === "symbol" || property in target) {
-        return Reflect.get(target, property, receiver);
-      }
-
-      if (property === "attrPath") {
-        return parts.join(".");
-      }
-
-      return createPackageProxy([...parts, property]);
-    },
-  }) as PackageSet;
+export const pkg = <const AttrPath extends string>(attrPath: AttrPath): PackageRef<AttrPath> => {
+  const parts = attrPath.split(".");
+  return {
+    ...nixAttrPath("package", ["pkgs", ...parts]),
+    attrPath,
+  };
 };
 
-export const pkgs = createPackageProxy([]);
+export const pkgs: KnownTopLevelPackages = {
+  git: pkg("git"),
+  neovim: pkg("neovim"),
+  nodejs: pkg("nodejs"),
+};

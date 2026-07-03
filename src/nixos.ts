@@ -1,5 +1,5 @@
 import { moduleFromConfig, type Module } from "./module.ts";
-import { rawNix, type NixExpr, type NixValue } from "./nix/expr.ts";
+import { nixExpr, rawNix, type NixExpr, type NixValue } from "./nix/expr.ts";
 import { renderList, renderNixValue } from "./nix/render.ts";
 
 export type System =
@@ -25,7 +25,7 @@ export const NixOS = {
       system: options.system,
     });
 
-    return rawNix<NixOSConfiguration>(`nixpkgs.lib.nixosSystem ${rendered}`);
+    return nixExpr("nixosConfiguration", `nixpkgs.lib.nixosSystem ${rendered}`);
   },
 };
 

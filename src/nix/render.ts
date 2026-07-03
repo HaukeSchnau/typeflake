@@ -30,6 +30,8 @@ const renderValue = (value: NixValue, indent: number): string => {
     case "symbol":
       throw new Error(`Cannot render ${typeof value} as Nix`);
   }
+
+  throw new Error("Cannot render unsupported Nix value");
 };
 
 export const renderList = (items: readonly NixValue[], indent: number): string => {
@@ -56,7 +58,7 @@ export const renderAttrSet = (
   const pad = indentation(indent);
   const childPad = indentation(childIndent);
   const rendered = entries
-    .sort(([left], [right]) => left.localeCompare(right))
+    .toSorted(([left], [right]) => left.localeCompare(right))
     .map(
       ([key, value]) => `${childPad}${renderAttrName(key)} = ${renderValue(value, childIndent)};`,
     )

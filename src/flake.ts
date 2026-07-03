@@ -1,10 +1,6 @@
 import * as Effect from "effect/Effect";
-import { rawNix, renderAttrName, type NixExpr, type NixValue } from "./nix/expr.ts";
+import { nixExpr, rawNix, renderAttrName, type NixExpr, type NixValue } from "./nix/expr.ts";
 import { renderNixValue } from "./nix/render.ts";
-
-const typeflakeFlakeSymbol: unique symbol = Symbol.for(
-  "typeflake.flake",
-) as typeof typeflakeFlakeSymbol;
 
 export interface FlakeInput {
   readonly url: string;
@@ -12,9 +8,9 @@ export interface FlakeInput {
 
 export type FlakeInputSpec = string | FlakeInput;
 
-export type FlakeInputRefs<Inputs extends Record<string, FlakeInputSpec>> = {
-  readonly [Name in keyof Inputs]: NixExpr<"input">;
-};
+export type FlakeInputRefs<Inputs extends Record<string, FlakeInputSpec>> = Readonly<
+  Record<keyof Inputs & string, NixExpr<"input">>
+>;
 
 export interface DevShell {
   readonly packages?: readonly NixValue[];
@@ -35,40 +31,37 @@ export interface FlakeSpec<
 
 export interface TypeflakeFlake<
   Inputs extends Record<string, FlakeInputSpec> = Record<string, FlakeInputSpec>,
+  E = never,
+  R = never,
 > {
-  readonly [typeflakeFlakeSymbol]: true;
-  readonly resolve: () => Promise<FlakeSpec<Inputs>>;
+  readonly spec: Effect.Effect<FlakeSpec<Inputs>, E, R>;
 }
 
-export type FlakeProgram<Inputs extends Record<string, FlakeInputSpec>> =
-  | FlakeSpec<Inputs>
-  | Effect.Effect<FlakeSpec<Inputs>>;
+export type AnyTypeflakeFlake = TypeflakeFlake<Record<string, FlakeInputSpec>, unknown, unknown>;
+
+export interface FlakeModule {
+  readonly default: AnyTypeflakeFlake;
+}
 
 export const Flake = {
   make<const Inputs extends Record<string, FlakeInputSpec>>(
-    program: FlakeProgram<Inputs>,
+    spec: FlakeSpec<Inputs>,
   ): TypeflakeFlake<Inputs> {
     return {
-      [typeflakeFlakeSymbol]: true,
-      resolve: async () => (Effect.isEffect(program) ? Effect.runPromise(program) : program),
+      spec: Effect.succeed(spec),
     };
+  },
+
+  effect<const Inputs extends Record<string, FlakeInputSpec>, E, R>(
+    spec: Effect.Effect<FlakeSpec<Inputs>, E, R>,
+  ): TypeflakeFlake<Inputs, E, R> {
+    return { spec };
   },
 };
 
-export const isTypeflakeFlake = (value: unknown): value is TypeflakeFlake =>
-  typeof value === "object" &&
-  value !== null &&
-  typeflakeFlakeSymbol in value &&
-  (value as TypeflakeFlake)[typeflakeFlakeSymbol] === true;
-
-export const resolveFlakeSpec = async (value: unknown): Promise<FlakeSpec> => {
-  if (isTypeflakeFlake(value)) return value.resolve();
-  if (Effect.isEffect(value)) return Effect.runPromise(value as Effect.Effect<FlakeSpec>);
-  if (isFlakeSpec(value)) return value;
-  throw new Error(
-    "Expected default export to be Flake.make(...), an Effect<FlakeSpec>, or a FlakeSpec object",
-  );
-};
+export const resolveFlakeSpec = <Inputs extends Record<string, FlakeInputSpec>, E, R>(
+  flake: TypeflakeFlake<Inputs, E, R>,
+): Effect.Effect<FlakeSpec<Inputs>, E, R> => flake.spec;
 
 export const renderFlake = (spec: FlakeSpec): string => {
   const inputRefs = createInputRefs(spec.inputs);
@@ -125,14 +118,13 @@ const renderDevShells = (systems: Record<string, Record<string, DevShell>>): Nix
 
 const createInputRefs = <Inputs extends Record<string, FlakeInputSpec>>(
   inputs: Inputs,
-): FlakeInputRefs<Inputs> =>
-  Object.fromEntries(
-    Object.keys(inputs).map((name) => [name, rawNix<NixExpr<"input">>(renderAttrName(name))]),
-  ) as unknown as FlakeInputRefs<Inputs>;
+): FlakeInputRefs<Inputs> => {
+  const refs: Record<string, NixExpr<"input">> = {};
 
-const isFlakeSpec = (value: unknown): value is FlakeSpec =>
-  typeof value === "object" &&
-  value !== null &&
-  "inputs" in value &&
-  "outputs" in value &&
-  typeof (value as FlakeSpec).outputs === "function";
+  for (const name of Object.keys(inputs)) {
+    refs[name] = nixExpr("input", renderAttrName(name));
+  }
+
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Object.keys(inputs) is the runtime witness for keyof Inputs.
+  return refs as FlakeInputRefs<Inputs>;
+};
