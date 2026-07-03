@@ -2,6 +2,12 @@ export type OptionScope = "home-manager" | "nixos";
 
 export type OptionPath = readonly [string, ...string[]];
 
+export interface OptionTypeIR {
+  readonly description: string | null;
+  readonly name: string;
+  readonly nestedTypes: Readonly<Record<string, OptionTypeIR>>;
+}
+
 export interface OptionIR {
   readonly declarations: readonly string[];
   readonly defaultText: string | null;
@@ -11,7 +17,7 @@ export interface OptionIR {
   readonly path: OptionPath;
   readonly readOnly: boolean;
   readonly scope: OptionScope;
-  readonly type: string;
+  readonly type: OptionTypeIR;
   readonly visible: boolean | "shallow";
 }
 

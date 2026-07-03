@@ -54,6 +54,16 @@ Outputs:
 The cache key should include the lock hash, system, module list, and special
 args that affect evaluation.
 
+The current implementation exposes this as two explicit commands:
+
+```sh
+typeflake options probe --flake . --output .typeflake/options.json
+typeflake options generate --input .typeflake/options.json --output .typeflake/options.ts
+```
+
+The probe command reads the selected project's locked flake inputs. Typeflake's
+own development `flake.lock` is only used for Typeflake itself and its tests.
+
 ### One Intermediate Representation
 
 Nix option metadata should flow through a single internal representation:
@@ -215,8 +225,8 @@ export default Flake.make(
 Initial generated files:
 
 - `flake.nix`
-- `.typeflake/metadata.json`
-- `.typeflake/types/options.d.ts`
+- `.typeflake/options.json`
+- `.typeflake/options.ts`
 - `.typeflake/types/packages.d.ts`
 
 The generated Nix should be readable, stable, and formatted.

@@ -18,3 +18,12 @@ export class TypeScriptCheckFailed extends Data.TaggedError("TypeScriptCheckFail
 export class DoctorFailed extends Data.TaggedError("DoctorFailed")<{
   readonly failedChecks: readonly string[];
 }> {}
+
+export class OptionMetadataParseError extends Data.TaggedError("OptionMetadataParseError")<{
+  readonly cause: unknown;
+  readonly path?: string;
+}> {}
+
+export class UnsupportedOptionsFound extends Data.TaggedError("UnsupportedOptionsFound")<{
+  readonly options: readonly string[];
+}> {}
