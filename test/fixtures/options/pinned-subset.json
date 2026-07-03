@@ -11,7 +11,35 @@
       "path": ["home", "stateVersion"],
       "readOnly": false,
       "scope": "home-manager",
-      "type": "enum",
+      "type": {
+        "description": "one of \"18.09\", \"19.03\", \"19.09\", \"20.03\", \"20.09\", \"21.03\", \"21.05\", \"21.11\", \"22.05\", \"22.11\", \"23.05\", \"23.11\", \"24.05\", \"24.11\", \"25.05\", \"25.11\", \"26.05\", \"26.11\"",
+        "name": "enum",
+        "nestedTypes": {}
+      },
+      "visible": true
+    },
+    {
+      "declarations": [
+        "/nix/store/6ml8k960pjkrbb0dp0v06iacfkr9jfj9-source/modules/home-environment.nix"
+      ],
+      "defaultText": null,
+      "description": "The set of packages to appear in the user environment.",
+      "exampleText": null,
+      "internal": false,
+      "path": ["home", "packages"],
+      "readOnly": false,
+      "scope": "home-manager",
+      "type": {
+        "description": "list of package",
+        "name": "listOf",
+        "nestedTypes": {
+          "elemType": {
+            "description": "package",
+            "name": "package",
+            "nestedTypes": {}
+          }
+        }
+      },
       "visible": true
     },
     {
@@ -25,7 +53,11 @@
       "path": ["programs", "git", "enable"],
       "readOnly": false,
       "scope": "home-manager",
-      "type": "bool",
+      "type": {
+        "description": "boolean",
+        "name": "bool",
+        "nestedTypes": {}
+      },
       "visible": true
     }
   ],
@@ -41,7 +73,17 @@
       "path": ["boot", "loader", "grub", "devices"],
       "readOnly": false,
       "scope": "nixos",
-      "type": "listOf",
+      "type": {
+        "description": "list of string",
+        "name": "listOf",
+        "nestedTypes": {
+          "elemType": {
+            "description": "string",
+            "name": "str",
+            "nestedTypes": {}
+          }
+        }
+      },
       "visible": true
     },
     {
@@ -55,7 +97,17 @@
       "path": ["environment", "systemPackages"],
       "readOnly": false,
       "scope": "nixos",
-      "type": "listOf",
+      "type": {
+        "description": "list of package",
+        "name": "listOf",
+        "nestedTypes": {
+          "elemType": {
+            "description": "package",
+            "name": "package",
+            "nestedTypes": {}
+          }
+        }
+      },
       "visible": true
     },
     {
@@ -72,7 +124,77 @@
       "path": ["fileSystems"],
       "readOnly": false,
       "scope": "nixos",
-      "type": "attrsOf",
+      "type": {
+        "description": "attribute set of (submodule)",
+        "name": "attrsOf",
+        "nestedTypes": {
+          "elemType": {
+            "description": "submodule",
+            "name": "submodule",
+            "nestedTypes": {}
+          }
+        }
+      },
+      "visible": true
+    },
+    {
+      "declarations": [
+        "/nix/store/fafnljsz5sckb1vzpns5dc2l6z4xkakm-source/nixos/modules/services/networking/firewall.nix"
+      ],
+      "defaultText": null,
+      "description": "List of TCP ports on which incoming connections are\naccepted.\n",
+      "exampleText": "[22,80]",
+      "internal": false,
+      "path": ["networking", "firewall", "allowedTCPPorts"],
+      "readOnly": false,
+      "scope": "nixos",
+      "type": {
+        "description": "list of 16 bit unsigned integer; between 0 and 65535 (both inclusive)",
+        "name": "listOf",
+        "nestedTypes": {
+          "elemType": {
+            "description": "16 bit unsigned integer; between 0 and 65535 (both inclusive)",
+            "name": "unsignedInt16",
+            "nestedTypes": {}
+          }
+        }
+      },
+      "visible": true
+    },
+    {
+      "declarations": [
+        "/nix/store/fafnljsz5sckb1vzpns5dc2l6z4xkakm-source/nixos/modules/tasks/network-interfaces.nix"
+      ],
+      "defaultText": "config.system.nixos.distroId",
+      "description": "The name of the machine. Leave it empty if you want to obtain it from a\nDHCP server (if using DHCP). The hostname must be a valid DNS label (see\nRFC 1035 section 2.3.1: \"Preferred name syntax\", RFC 1123 section 2.1:\n\"Host Names and Numbers\") and as such must not contain the domain part.\nThis means that the hostname must start with a letter or digit,\nend with a letter or digit, and have as interior characters only\nletters, digits, and hyphen. The maximum length is 63 characters.\nAdditionally it is recommended to only use lower-case characters.\nIf (e.g. for legacy reasons) a FQDN is required as the Linux kernel\nnetwork node hostname (uname --nodename) the option\nboot.kernel.sysctl.\"kernel.hostname\" can be used as a workaround (but\nthe 64 character limit still applies).\n\nWARNING: Do not use underscores (_) or you may run into unexpected issues.\n",
+      "exampleText": null,
+      "internal": false,
+      "path": ["networking", "hostName"],
+      "readOnly": false,
+      "scope": "nixos",
+      "type": {
+        "description": "string matching the pattern ^$|^[[:alnum:]]([[:alnum:]_-]{0,61}[[:alnum:]])?$",
+        "name": "strMatching \"^\\$|^[[:alnum:]]([[:alnum:]_-]{0,61}[[:alnum:]])?\\$\"",
+        "nestedTypes": {}
+      },
+      "visible": true
+    },
+    {
+      "declarations": [
+        "/nix/store/fafnljsz5sckb1vzpns5dc2l6z4xkakm-source/nixos/modules/services/web-servers/nginx/default.nix"
+      ],
+      "defaultText": null,
+      "description": "Whether to enable Nginx Web Server.",
+      "exampleText": "true",
+      "internal": false,
+      "path": ["services", "nginx", "enable"],
+      "readOnly": false,
+      "scope": "nixos",
+      "type": {
+        "description": "boolean",
+        "name": "bool",
+        "nestedTypes": {}
+      },
       "visible": true
     },
     {
@@ -86,7 +208,35 @@
       "path": ["services", "openssh", "enable"],
       "readOnly": false,
       "scope": "nixos",
-      "type": "bool",
+      "type": {
+        "description": "boolean",
+        "name": "bool",
+        "nestedTypes": {}
+      },
+      "visible": true
+    },
+    {
+      "declarations": [
+        "/nix/store/fafnljsz5sckb1vzpns5dc2l6z4xkakm-source/nixos/modules/services/networking/ssh/sshd.nix"
+      ],
+      "defaultText": null,
+      "description": "Specifies on which ports the SSH daemon listens.\n",
+      "exampleText": null,
+      "internal": false,
+      "path": ["services", "openssh", "ports"],
+      "readOnly": false,
+      "scope": "nixos",
+      "type": {
+        "description": "list of 16 bit unsigned integer; between 0 and 65535 (both inclusive)",
+        "name": "listOf",
+        "nestedTypes": {
+          "elemType": {
+            "description": "16 bit unsigned integer; between 0 and 65535 (both inclusive)",
+            "name": "unsignedInt16",
+            "nestedTypes": {}
+          }
+        }
+      },
       "visible": true
     },
     {
@@ -100,7 +250,11 @@
       "path": ["system", "stateVersion"],
       "readOnly": false,
       "scope": "nixos",
-      "type": "str",
+      "type": {
+        "description": "string",
+        "name": "str",
+        "nestedTypes": {}
+      },
       "visible": true
     },
     {
@@ -115,7 +269,17 @@
       "path": ["users", "users"],
       "readOnly": false,
       "scope": "nixos",
-      "type": "attrsOf",
+      "type": {
+        "description": "attribute set of (submodule)",
+        "name": "attrsOf",
+        "nestedTypes": {
+          "elemType": {
+            "description": "submodule",
+            "name": "submodule",
+            "nestedTypes": {}
+          }
+        }
+      },
       "visible": true
     }
   ]

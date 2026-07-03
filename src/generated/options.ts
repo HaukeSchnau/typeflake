@@ -20,9 +20,19 @@ export interface NixOSGeneratedConfig {
     readonly systemPackages?: NixOptionValue<readonly NixInput[]>;
   };
   readonly fileSystems?: NixOptionValue<Readonly<Record<string, NixInput>>>;
+  readonly networking?: {
+    readonly firewall?: {
+      readonly allowedTCPPorts?: NixOptionValue<readonly number[]>;
+    };
+    readonly hostName?: NixOptionValue<string>;
+  };
   readonly services?: {
+    readonly nginx?: {
+      readonly enable?: NixOptionValue<boolean>;
+    };
     readonly openssh?: {
       readonly enable?: NixOptionValue<boolean>;
+      readonly ports?: NixOptionValue<readonly number[]>;
     };
   };
   readonly system?: {
@@ -35,6 +45,7 @@ export interface NixOSGeneratedConfig {
 
 export interface HomeManagerGeneratedConfig {
   readonly home?: {
+    readonly packages?: NixOptionValue<readonly NixInput[]>;
     readonly stateVersion?: NixOptionValue<string>;
   };
   readonly programs?: {

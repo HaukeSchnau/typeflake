@@ -18,13 +18,18 @@ export const defaultNixOSOptionPaths = [
   ["boot", "loader", "grub", "devices"],
   ["environment", "systemPackages"],
   ["fileSystems"],
+  ["networking", "firewall", "allowedTCPPorts"],
+  ["networking", "hostName"],
+  ["services", "nginx", "enable"],
   ["services", "openssh", "enable"],
+  ["services", "openssh", "ports"],
   ["system", "stateVersion"],
   ["users", "users"],
 ] as const satisfies readonly OptionPath[];
 
 export const defaultHomeManagerOptionPaths = [
   ["home", "stateVersion"],
+  ["home", "packages"],
   ["programs", "git", "enable"],
 ] as const satisfies readonly OptionPath[];
 
@@ -47,6 +52,12 @@ export const renderOptionProbeExpression = (options: OptionProbeOptions): string
   getPath = options: path:
     builtins.foldl' (value: key: value.\${key}) options path;
 
+  typeToIR = type: {
+    name = type.name or "unknown";
+    description = renderDoc (type.description or null);
+    nestedTypes = builtins.mapAttrs (_: nestedType: typeToIR nestedType) (type.nestedTypes or {});
+  };
+
   optionToIR = scope: options: path:
     let option = getPath options path; in {
       inherit path scope;
@@ -56,7 +67,7 @@ export const renderOptionProbeExpression = (options: OptionProbeOptions): string
       exampleText = renderDoc (option.example or null);
       internal = option.internal or false;
       readOnly = option.readOnly or false;
-      type = option.type.name or option.type.description or "unknown";
+      type = typeToIR option.type;
       visible = option.visible or true;
     };
 
@@ -75,6 +86,13 @@ export const flakeInput = (name: string): NixExpr<"flakeInput"> =>
   nixExpr(
     "flakeInput",
     `(builtins.getFlake ("git+file://" + toString ./.))
+    .inputs.${name}`,
+  );
+
+export const projectFlakeInput = (flakeReference: string, name: string): NixExpr<"flakeInput"> =>
+  nixExpr(
+    "flakeInput",
+    `(builtins.getFlake ${renderNixValue(flakeReference)})
     .inputs.${name}`,
   );
 

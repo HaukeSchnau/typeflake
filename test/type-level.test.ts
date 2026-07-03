@@ -47,9 +47,19 @@ const typedNixOSConfig: NixOS.Config = NixOS.config({
       fsType: "tmpfs",
     },
   },
+  networking: {
+    firewall: {
+      allowedTCPPorts: [22, 443],
+    },
+    hostName: "framework",
+  },
   services: {
+    nginx: {
+      enable: false,
+    },
     openssh: {
       enable: true,
+      ports: [22],
     },
   },
   system: {
@@ -66,6 +76,7 @@ const typedNixOSConfig: NixOS.Config = NixOS.config({
 
 const typedHomeConfig: Home.Config = {
   home: {
+    packages: [pkgs.git],
     stateVersion: "25.11",
   },
   programs: {
@@ -118,5 +129,21 @@ NixOS.config({
     definitelyNotAService: {
       enable: true,
     },
+  },
+});
+
+NixOS.config({
+  services: {
+    openssh: {
+      // @ts-expect-error NixOS OpenSSH ports are generated as a readonly number list.
+      ports: ["22"],
+    },
+  },
+});
+
+NixOS.config({
+  networking: {
+    // @ts-expect-error NixOS hostName is generated as a string.
+    hostName: 1234,
   },
 });

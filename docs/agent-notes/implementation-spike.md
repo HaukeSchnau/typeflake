@@ -3,7 +3,7 @@
 ## Active Goal
 
 Build the first Typeflake implementation spike and extend it with the first
-option-introspection slice:
+project-local option-generation slices:
 
 - reproducible development tooling,
 - typed Flake IR,
@@ -11,6 +11,7 @@ option-introspection slice:
 - small Nub-powered CLI,
 - early validation hooks,
 - real NixOS/Home Manager option probing,
+- project-local `typeflake options probe` / `typeflake options generate`,
 - generated option-type fixtures,
 - and typed config boundaries that lean on TypeScript composition instead of a
   separate Typeflake module system.
@@ -52,13 +53,19 @@ option-introspection slice:
   - TypeScript remains the module/composition system. Typeflake should expose
     typed config boundaries such as `NixOS.config` and `Home.Config`, not a
     parallel module-authoring API.
-  - Initial option metadata comes from real Nix evaluation of pinned nixpkgs and
-    Home Manager inputs.
+  - Option metadata comes from real Nix evaluation of the selected project's
+    pinned nixpkgs and Home Manager inputs.
+  - Project flake references use `git+file://<repo-root>?dir=<subdir>` when the
+    selected flake is inside a Git repo; this avoids local `.git` file type
+    issues seen with plain `path:` references on this machine.
+  - `typeflake options probe` writes stable option metadata JSON.
+  - `typeflake options generate` reads that metadata and emits deterministic
+    TypeScript declarations.
   - The current generated option types are deliberately a small fixture subset,
     not a hand-authored permanent surface.
   - Unsupported or under-modeled Nix option types should stay explicit through
     `UnsupportedNixOption<...>` / `NixExpr` escape hatches until richer option
-    typing exists.
+    typing exists. `--strict` fails if unsupported shapes remain.
 - Flake inputs:
   - Inputs are authored with `Flake.input(name, url)` and collected with
     `Flake.inputs(...)`.
@@ -92,6 +99,7 @@ option-introspection slice:
 6. Add the first option-introspection bridge for NixOS + Home Manager. Done.
 7. Generate a pinned option fixture and expose typed config boundaries. Done.
 8. Verify with typecheck, lint, runtime tests, type tests, generated Nix, and the repository flake check. Done.
+9. Add project-local option probe/generate commands backed by a nested fixture flake lock. Done.
 
 ## Verification Status
 
@@ -130,14 +138,27 @@ examples/basic/flake.generated.nix` passes and verifies the generated Nix flake.
 - Option-introspection slice:
   - `nub run check` passes, including oxlint type-aware checks, Effect TSGO,
     Effect Vitest runtime tests, Attest type tests, and oxfmt.
-    Current suite: 5 test files, 12 tests.
+    Current suite after project-local generation: 6 test files, 15 tests.
   - `test/options.test.ts` runs a real `nix eval --impure --json --expr ...`
     probe against pinned nixpkgs/Home Manager inputs and compares the result to
     `test/fixtures/options/pinned-subset.json`.
   - The generated option fixture file is compared exactly against
     `generateOptionTypeFile(...)`, so generator drift is caught by tests.
+  - `test/options-command.test.ts` probes
+    `test/fixtures/project-flake/flake.lock` with non-default input names
+    (`fixture-nixpkgs`, `fixture-home-manager`) to prove generation comes from
+    the selected project flake, not Typeflake's own flake input names.
+  - Expanded option typing covers booleans, strings/string-pattern types,
+    package lists, numeric lists, attrsets, submodule-shaped values as
+    `NixInput`, and explicit unsupported fallbacks.
   - Generated config typing is exposed through `NixOS.config`, `NixOS.Config`,
     and `Home.Config`.
+  - Manual CLI smoke test passed:
+    `nub run typeflake options probe --flake test/fixtures/project-flake
+--nixpkgs-input fixture-nixpkgs --home-manager-input fixture-home-manager
+--system x86_64-linux --scope nixos --scope home-manager --output
+<tmp>/options.json`, followed by `nub run typeflake options generate
+--input <tmp>/options.json --output <tmp>/options.ts`.
   - `nub run typeflake doctor` passes against real local tools.
   - `nub run typeflake check --input examples/basic/flake.ts --output
 examples/basic/flake.generated.nix` passes and verifies the generated Nix
@@ -169,6 +190,6 @@ examples/basic/flake.generated.nix` passes and verifies the generated Nix
 - Whether to keep generated `flake.nix` at repository root by default or write to a separate output path during early development.
 - How to scale from the pinned fixture subset to broad option extraction without
   making generation slow or producing unreadable types.
-- How much richer type metadata can be recovered from Nix option definitions
-  beyond `type.name` / `type.description`.
+- How much richer type metadata can be recovered from Nix option definitions,
+  especially enum literal values, `either`, and generated submodule field shapes.
 - Whether `typeflake sync` should optionally run `nixfmt` on generated output when available.

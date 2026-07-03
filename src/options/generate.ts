@@ -1,4 +1,4 @@
-import type { OptionIR, OptionPath, OptionScope } from "./ir.ts";
+import type { OptionIR, OptionPath, OptionScope, OptionTypeIR } from "./ir.ts";
 
 export interface GenerateOptionTypesOptions {
   readonly importPath: string;
@@ -128,28 +128,78 @@ const renderTree = (tree: OptionTree, depth: number): string => {
 const toOptionValueType = (option: OptionIR): string =>
   `NixOptionValue<${toTypeScriptType(option.type, option.path)}>`;
 
-export const toTypeScriptType = (nixType: string, path: readonly string[] = []): string => {
-  const normalized = nixType.toLowerCase();
+export const toTypeScriptType = (nixType: OptionTypeIR, path: readonly string[] = []): string => {
+  const normalized = normalizeTypeName(nixType.name);
+  const description = nixType.description?.toLowerCase() ?? "";
 
-  if (normalized === "boolean" || normalized === "bool") return "boolean";
-  if (normalized === "enum" || normalized === "string" || normalized === "str") return "string";
-  if (normalized.includes("list") && normalized.includes("package")) {
-    return "readonly NixInput[]";
+  if (normalized === "bool" || normalized === "boolean") return "boolean";
+  if (normalized === "nullor") return renderNullableType(nixType, path);
+  if (normalized === "listof") return renderListType(nixType, path);
+  if (normalized === "attrsof") return renderAttrsType(nixType, path);
+  if (
+    normalized === "str" ||
+    normalized === "string" ||
+    normalized === "enum" ||
+    normalized.startsWith("strmatching")
+  ) {
+    return "string";
   }
-  if (normalized.includes("list") && normalized.includes("string")) {
-    return "readonly string[]";
-  }
-  if (normalized === "listof" && path.join(".") === "environment.systemPackages") {
-    return "readonly NixInput[]";
-  }
-  if (normalized === "listof") return "readonly string[]";
-  if (normalized.includes("attribute set")) {
-    return "Readonly<Record<string, NixInput>>";
-  }
-  if (normalized === "attrsof") return "Readonly<Record<string, NixInput>>";
+  if (isNumberType(normalized, description)) return "number";
+  if (normalized === "package") return "NixInput";
+  if (normalized === "path") return "string";
+  if (normalized === "submodule") return "NixInput";
 
-  return `UnsupportedNixOption<${JSON.stringify(nixType)}>`;
+  if (description.includes("list of package")) return "readonly NixInput[]";
+  if (description.includes("list of string")) return "readonly string[]";
+  if (description.includes("attribute set")) return "Readonly<Record<string, NixInput>>";
+
+  return unsupportedType(nixType);
 };
+
+export const collectUnsupportedOptions = (options: readonly OptionIR[]): readonly OptionIR[] =>
+  options.filter((option) => toTypeScriptType(option.type, option.path).startsWith("Unsupported"));
+
+const renderNullableType = (nixType: OptionTypeIR, path: readonly string[]): string => {
+  const nested = nixType.nestedTypes.elemType ?? nixType.nestedTypes.valueType;
+  if (nested === undefined) return `${unsupportedType(nixType)} | null`;
+
+  return `${toTypeScriptType(nested, path)} | null`;
+};
+
+const renderListType = (nixType: OptionTypeIR, path: readonly string[]): string => {
+  const elemType = nixType.nestedTypes.elemType;
+  if (elemType === undefined) return "readonly NixInput[]";
+
+  return `readonly ${toCollectionElementType(elemType, path)}[]`;
+};
+
+const renderAttrsType = (nixType: OptionTypeIR, path: readonly string[]): string => {
+  const elemType = nixType.nestedTypes.elemType;
+  if (elemType === undefined) return "Readonly<Record<string, NixInput>>";
+
+  return `Readonly<Record<string, ${toCollectionElementType(elemType, path)}>>`;
+};
+
+const toCollectionElementType = (nixType: OptionTypeIR, path: readonly string[]): string => {
+  const normalized = normalizeTypeName(nixType.name);
+  if (normalized === "submodule") return "NixInput";
+
+  return toTypeScriptType(nixType, path);
+};
+
+const isNumberType = (normalized: string, description: string): boolean =>
+  normalized.includes("int") ||
+  normalized === "number" ||
+  description.includes("integer") ||
+  description.includes("signed integer");
+
+const unsupportedType = (nixType: OptionTypeIR): string =>
+  `UnsupportedNixOption<${JSON.stringify(renderUnsupportedDescription(nixType))}>`;
+
+const renderUnsupportedDescription = (nixType: OptionTypeIR): string =>
+  nixType.description === null ? nixType.name : `${nixType.name}: ${nixType.description}`;
+
+const normalizeTypeName = (name: string): string => name.toLowerCase().replaceAll(/[^a-z0-9]/g, "");
 
 const quoteProperty = (key: string): string =>
   /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(key) ? key : JSON.stringify(key);

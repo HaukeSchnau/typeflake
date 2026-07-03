@@ -91,13 +91,50 @@ export default Flake.make({
 The option bridge now has a narrow working vertical slice:
 
 - a Nix-side probe that evaluates pinned NixOS and Home Manager option metadata,
-- generated fixture types for a small option subset,
+- project-local `typeflake options probe` and `typeflake options generate`
+  commands,
+- generated fixture types for a small but broader option subset,
 - Attest-backed type assertions for the generated config surface,
 - and a golden test that compares real `nix eval --json` output to the committed
   option fixture.
 
 Deployment and broader orchestration are intentionally later milestones. The
 first bet to prove is the type model.
+
+## Generated Type Lifecycle
+
+Generated option types belong to the consuming project. Typeflake reads that
+project's locked flake inputs, asks Nix to evaluate the real option graph, and
+then emits TypeScript declarations from the resulting metadata.
+
+```sh
+typeflake options probe \
+  --flake . \
+  --system x86_64-linux \
+  --scope nixos \
+  --scope home-manager \
+  --output .typeflake/options.json
+
+typeflake options generate \
+  --input .typeflake/options.json \
+  --output .typeflake/options.ts
+```
+
+Use `--nixpkgs-input` and `--home-manager-input` when a project uses different
+flake input names. After changing `flake.lock`, rerun both commands and then run
+the normal checks.
+
+The trust boundary is intentionally simple:
+
+- `flake.lock` pins the Nix universe.
+- Nix evaluates the real NixOS/Home Manager module options.
+- Typeflake parses that metadata into a typed IR.
+- TypeScript checks authoring against generated declarations.
+- Nix remains the execution truth for evaluation, checks, and builds.
+
+Unsupported option shapes are never erased into `any`. The generator keeps them
+explicit with `UnsupportedNixOption<...>` escape hatches, and
+`typeflake options generate --strict` fails if any remain.
 
 ## Documents
 
