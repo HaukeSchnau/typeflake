@@ -1,3 +1,4 @@
+export { check, type CheckOptions } from "./check.ts";
 export { Flake, renderFlake, resolveFlakeSpec, type DevShell, type FlakeSpec } from "./flake.ts";
 export { Home, type HomeNixOSModuleOptions } from "./home.ts";
 export { type Module, moduleFromConfig, rawModule } from "./module.ts";

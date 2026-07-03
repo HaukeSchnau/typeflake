@@ -1,6 +1,7 @@
 #!/usr/bin/env nub
 
 import * as Effect from "effect/Effect";
+import { check } from "./check.ts";
 import { sync } from "./sync.ts";
 import packageJson from "../package.json" with { type: "json" };
 
@@ -43,6 +44,7 @@ const printHelp = (): void => {
   console.log(`typeflake ${version}
 
 Usage:
+  typeflake check [--input flake.ts] [--output flake.nix]
   typeflake sync [--input flake.ts] [--output flake.nix]
   typeflake help
 `);
@@ -54,6 +56,9 @@ const program = Effect.gen(function* () {
   switch (parsed.command) {
     case "help":
       printHelp();
+      return;
+    case "check":
+      yield* check({ input: parsed.input, output: parsed.output });
       return;
     case "sync":
       yield* sync({ input: parsed.input, output: parsed.output });
