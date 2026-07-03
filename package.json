@@ -9,15 +9,15 @@
     "nixos",
     "typescript"
   ],
-  "homepage": "https://git.schnau.dev/schnau/typeflake",
+  "homepage": "https://github.com/HaukeSchnau/typeflake",
   "bugs": {
-    "url": "https://git.schnau.dev/schnau/typeflake/issues"
+    "url": "https://github.com/HaukeSchnau/typeflake/issues"
   },
   "license": "MIT",
   "author": "Hauke Schnau <hauke@schnau.dev>",
   "repository": {
     "type": "git",
-    "url": "git+ssh://git@git.schnau.dev/schnau/typeflake.git"
+    "url": "git+https://github.com/HaukeSchnau/typeflake.git"
   },
   "bin": {
     "typeflake": "bin/typeflake.js"
