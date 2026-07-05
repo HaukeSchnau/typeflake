@@ -113,7 +113,7 @@ project-local option-generation slices:
     testing. Done.
 11. Add the first consumer project loop: `typeflake init`, installed-package
     smoke tests, better generated option declarations, and alpha.1 metadata.
-    In progress.
+    Done.
 
 ## Verification Status
 
@@ -209,6 +209,11 @@ typeflake@next`, `typeflake --version`, importing `typeflake`, consumer
   - `nub run package:smoke` builds, packs, installs into a temporary consumer
     project, runs `typeflake init`, checks idempotency, typechecks the consumer,
     and runs installed `typeflake sync`.
+  - `typeflake@0.0.1-alpha.1` was published publicly on npm on 2026-07-05.
+    `next` points to `0.0.1-alpha.1`; `latest` remains at `0.0.1-alpha.0`.
+  - Public registry smoke test passed with `npm install --save-dev
+typeflake@next`, `typeflake --version`, `typeflake init --package-manager
+npm`, and consumer `tsgo --noEmit --project tsconfig.json`.
 
 ## Tooling Notes
 
