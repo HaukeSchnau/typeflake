@@ -2,16 +2,42 @@
   "name": "typeflake",
   "version": "0.1.0-alpha.0",
   "description": "Typed Nix modules written in Effect TypeScript.",
+  "keywords": [
+    "nix",
+    "nixos",
+    "home-manager",
+    "nix-darwin",
+    "effect",
+    "typescript"
+  ],
+  "homepage": "https://typeflake.schnau.dev",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/HaukeSchnau/typeflake.git"
+  },
+  "bugs": {
+    "url": "https://github.com/HaukeSchnau/typeflake/issues"
+  },
   "license": "MIT",
   "author": "Hauke Schnau <hauke@schnau.dev>",
   "type": "module",
   "packageManager": "pnpm@11.27.0",
   "exports": {
-    ".": "./src/index.ts"
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
   },
+  "files": [
+    "dist",
+    "src/probe.nix"
+  ],
   "scripts": {
-    "check": "tsc -p .",
-    "test": "vitest run"
+    "build": "tsc -p tsconfig.build.json",
+    "check": "tsc -p . && tsc -p tsconfig.build.json --noEmit",
+    "test": "vitest run",
+    "prepack": "tsc -p tsconfig.build.json"
   },
   "dependencies": {
     "effect": "4.0.0"

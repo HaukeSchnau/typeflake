@@ -14,16 +14,27 @@
       forAll = f: nixpkgs.lib.genAttrs systems (system: f nixpkgs.legacyPackages.${system});
     in
     {
-      devShells = forAll (pkgs: {
-        default = pkgs.mkShell {
-          packages = [
-            pkgs.bun
-            pkgs.nodejs_24
-            pkgs.pnpm_11
-            pkgs.nixfmt
-          ];
-        };
-      });
+      devShells = forAll (
+        pkgs:
+        let
+          # npm stage, which releases use, arrived in npm 11.20; Node 24 ships 11.19.
+          nodejs = pkgs.nodejs_26;
+          shell = pkgs.mkShellNoCC {
+            packages = [
+              nodejs
+              (pkgs.pnpm_11.override { nodejs-slim = pkgs.nodejs-slim_26; })
+              pkgs.bun
+              pkgs.nixfmt
+              # The tests evaluate rendered Nix.
+              pkgs.nix
+            ];
+          };
+        in
+        {
+          ci = shell;
+          default = shell;
+        }
+      );
 
       formatter = forAll (pkgs: pkgs.nixfmt);
     };
