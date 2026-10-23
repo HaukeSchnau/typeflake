@@ -1,0 +1,25 @@
+{
+  "name": "typeflake",
+  "version": "0.1.0-alpha.0",
+  "description": "Typed Nix modules written in Effect TypeScript.",
+  "license": "MIT",
+  "author": "Hauke Schnau <hauke@schnau.dev>",
+  "type": "module",
+  "packageManager": "pnpm@11.27.0",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "check": "tsc -p .",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "effect": "4.0.0"
+  },
+  "devDependencies": {
+    "@effect/vitest": "4.0.0",
+    "@types/bun": "1.4.2",
+    "typescript": "7.0.2",
+    "vitest": "5.0.3"
+  }
+}
