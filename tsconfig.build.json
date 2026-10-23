@@ -1,11 +1,17 @@
+// The npm package ships JavaScript, since Node doesn't strip types inside node_modules.
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "rewriteRelativeImportExtensions": true,
     "noEmit": false,
     "declaration": true,
-    "declarationMap": true,
     "rootDir": "src",
-    "outDir": "dist"
+    "outDir": "dist",
+    // The build only emits; `vp check` reports the Effect plugin's diagnostics.
+    "plugins": []
   },
-  "include": ["src"]
+  "include": ["src"],
+  "exclude": ["src/**/*.test.ts"]
 }

@@ -31,33 +31,43 @@ options and interpolate store paths into strings, and the prototype could expres
   services land in the module's `R`, and the CLI provides them as layers, so a module that reads the
   file system says so in its type. That replaces the prototype's taint labels. The CLI is Effect too,
   with Schema decoding the probe's output.
-- Bun runs the CLI and imports modules directly, so there is no TypeScript compiler at runtime.
-  Typechecking is the editor's and `typeflake check`'s job.
+- Node runs the CLI and imports `*.nix.ts` modules directly, stripping their types, so there is no
+  TypeScript compiler at runtime. Typechecking is the editor's and `vp check`'s job. The npm package
+  ships JavaScript, since Node doesn't strip types inside `node_modules`.
+- The repository follows Hauke's TypeScript conventions: the shared tsconfig, Vite+ for format, lint
+  (type-aware oxlint with the Effect presets and the vendored anti-slop plugin) and tests next to
+  their modules.
 
 A module, condensed from the port of infra's `modules/features/app-stores`:
 
 ```ts
 export default NixOS.module({
-  options: { appStores: { enable: Options.enable("asc and gplay with the Urbs UG store credentials") } },
+  options: {
+    appStores: { enable: Options.enable("asc and gplay with the Urbs UG store credentials") },
+  },
   config: ({ config, lib, pkgs }) => {
-    const secrets = config.sops.secrets
+    const secrets = config.sops.secrets;
     const asc = pkgs.writeShellApplication({
       name: "asc",
       text: nix`
         ASC_PRIVATE_KEY=$(cat ${secrets["app-store-connect/api-key"].path})
         exec ${lib.getExe(pkgs.callPackage(path("./asc-package.nix"), {}))} "$@"
       `,
-    })
+    });
     return mkIf(config.appStores.enable, {
-      sops: { secrets: { "app-store-connect/api-key": { owner: config.identity.primaryUser, mode: "0400" } } },
+      sops: {
+        secrets: {
+          "app-store-connect/api-key": { owner: config.identity.primaryUser, mode: "0400" },
+        },
+      },
       environment: { systemPackages: [asc] },
-    })
+    });
   },
-})
+});
 ```
 
 Typeflake calls `config` once with proxies, and property access builds Nix AST. Nothing is evaluated in
-Bun. TypeScript can't branch on a `Nix<boolean>`, so conditions go through `mkIf` or `ifThenElse`.
+Node. TypeScript can't branch on a `Nix<boolean>`, so conditions go through `mkIf` or `ifThenElse`.
 
 How the pieces fit:
 
@@ -123,13 +133,13 @@ on srv-2 and on m1.
 
 Taken on 2026-10-23 against `~/infra` on srv-2, with TypeScript 7.0.2:
 
-| | srv-2 (NixOS) | m1 (darwin) |
-|---|---|---|
-| Probe | 11 s, 940 MB | 3.4 s, 445 MB |
-| Options, Home Manager included | 40,949 (35,873 visible) | |
-| Probe output | 32 MB JSON | 11 MB JSON |
-| Generated types | 5.9 MB, 6,400 interfaces | 1.4 MB |
-| Typecheck of a sample module | 0.48 s, 59 MB | |
+|                                | srv-2 (NixOS)            | m1 (darwin)   |
+| ------------------------------ | ------------------------ | ------------- |
+| Probe                          | 11 s, 940 MB             | 3.4 s, 445 MB |
+| Options, Home Manager included | 41,038 (35,962 visible)  |               |
+| Probe output                   | 32 MB JSON               | 11 MB JSON    |
+| Generated types                | 5.9 MB, 6,400 interfaces | 1.4 MB        |
+| Typecheck of a sample module   | 0.48 s, 59 MB            |               |
 
 The sample module touches sshd's freeform settings, nginx virtual hosts, sops-nix secrets, Home Manager
 and infra's own options. Ten deliberate mistakes in it all fail to typecheck.
@@ -152,8 +162,9 @@ nixpkgs' `systemd option`.
 
 ## Next
 
-1. The CLI: render every module next to its `.ts`, probe and regenerate types when the lock changes,
-   and fail `check` on drift. Generate package names with the probe.
+1. The CLI renders every `*.nix.ts` module (`typeflake render`, `--check` for drift) and probes
+   configurations into `.typeflake/` (`typeflake types nixosConfigurations.srv-2`). Next: re-probe
+   when the lock changes, and generate package names with the probe.
 2. Port a module with submodule options and one shared between NixOS and darwin, through the CLI,
    into infra.
 3. Later: `flake.ts`, typed flake inputs, nested package sets.

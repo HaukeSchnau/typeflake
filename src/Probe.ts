@@ -1,54 +1,58 @@
-import { Schema } from "effect"
+import * as Schema from "effect/Schema";
 
 /** A module system type, as `probe.nix` reports it. */
 export interface NixType {
-  readonly name: string
-  readonly description?: string | null
+  readonly name: string;
+  readonly description?: string | null;
   /** The walk stopped here, so the type is unknown beyond its name. */
-  readonly truncated?: boolean
+  readonly truncated?: boolean;
   /** A configuration of a module class the walk was already inside. */
-  readonly classRef?: string
+  readonly classRef?: string;
   /** The type of an option the walk was already inside, by that option's id. */
-  readonly optionRef?: string
+  readonly optionRef?: string;
   /** The module class of a submodule that has one. */
-  readonly class?: string
-  readonly values?: ReadonlyArray<string | number | boolean | null>
-  readonly nested?: { readonly [key: string]: NixType }
-  readonly alternatives?: ReadonlyArray<NixType>
-  readonly options?: OptionTree
+  readonly class?: string;
+  readonly values?: ReadonlyArray<string | number | boolean | null>;
+  readonly nested?: { readonly [key: string]: NixType };
+  readonly alternatives?: ReadonlyArray<NixType>;
+  readonly options?: OptionTree;
 }
 
 export interface NixOption {
   /** The first declaration's position, `file:line:column`. */
-  readonly id: string | null
-  readonly visible: boolean | "shallow"
-  readonly type: NixType
-  readonly description: string | null
-  readonly default: string | null
-  readonly readOnly: boolean
-  readonly internal: boolean
+  readonly id: string | null;
+  readonly visible: boolean | "shallow";
+  readonly type: NixType;
+  readonly description: string | null;
+  readonly default: string | null;
+  readonly readOnly: boolean;
+  readonly internal: boolean;
 }
 
 export interface OptionGroup {
-  readonly group: OptionTree
+  readonly group: OptionTree;
 }
 
 export interface OptionTree {
-  readonly [name: string]: NixOption | OptionGroup
+  readonly [name: string]: NixOption | OptionGroup;
 }
+
+const suspendedType = Schema.suspend((): Schema.Codec<NixType> => NixType);
 
 const NixType: Schema.Codec<NixType> = Schema.Struct({
   name: Schema.String,
-  description: Schema.optionalKey(Schema.NullOr(Schema.String)),
-  truncated: Schema.optionalKey(Schema.Boolean),
-  classRef: Schema.optionalKey(Schema.String),
-  optionRef: Schema.optionalKey(Schema.String),
-  class: Schema.optionalKey(Schema.String),
-  values: Schema.optionalKey(Schema.Array(Schema.Union([Schema.String, Schema.Number, Schema.Boolean, Schema.Null]))),
-  nested: Schema.optionalKey(Schema.Record(Schema.String, Schema.suspend((): Schema.Codec<NixType> => NixType))),
-  alternatives: Schema.optionalKey(Schema.Array(Schema.suspend((): Schema.Codec<NixType> => NixType))),
-  options: Schema.optionalKey(Schema.suspend((): Schema.Codec<OptionTree> => OptionTree)),
-})
+  description: Schema.NullOr(Schema.String).pipe(Schema.optionalKey),
+  truncated: Schema.Boolean.pipe(Schema.optionalKey),
+  classRef: Schema.String.pipe(Schema.optionalKey),
+  optionRef: Schema.String.pipe(Schema.optionalKey),
+  class: Schema.String.pipe(Schema.optionalKey),
+  values: Schema.Array(
+    Schema.Union([Schema.String, Schema.Finite, Schema.Boolean, Schema.Null]),
+  ).pipe(Schema.optionalKey),
+  nested: Schema.Record(Schema.String, suspendedType).pipe(Schema.optionalKey),
+  alternatives: Schema.Array(suspendedType).pipe(Schema.optionalKey),
+  options: Schema.suspend((): Schema.Codec<OptionTree> => OptionTree).pipe(Schema.optionalKey),
+});
 
 const NixOption = Schema.Struct({
   id: Schema.NullOr(Schema.String),
@@ -58,13 +62,16 @@ const NixOption = Schema.Struct({
   default: Schema.NullOr(Schema.String),
   readOnly: Schema.Boolean,
   internal: Schema.Boolean,
-})
+});
 
 const OptionTree: Schema.Codec<OptionTree> = Schema.Record(
   Schema.String,
-  Schema.Union([NixOption, Schema.Struct({ group: Schema.suspend((): Schema.Codec<OptionTree> => OptionTree) })]),
-)
+  Schema.Union([
+    NixOption,
+    Schema.Struct({ group: Schema.suspend((): Schema.Codec<OptionTree> => OptionTree) }),
+  ]),
+);
 
-export const decodeOptionTree = Schema.decodeUnknownEffect(Schema.fromJsonString(OptionTree))
+export const decodeOptionTree = Schema.decodeUnknownEffect(Schema.fromJsonString(OptionTree));
 
-export const isGroup = (node: NixOption | OptionGroup): node is OptionGroup => "group" in node
+export const isGroup = (node: NixOption | OptionGroup): node is OptionGroup => "group" in node;

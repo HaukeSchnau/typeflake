@@ -1,15 +1,21 @@
-import { Effect } from "effect"
-import { describe, expect, it } from "vitest"
-import { mkForce, mkIf, nix, NixOS, Options, path, type Package, Types } from "../src/index.ts"
+import * as Effect from "effect/Effect";
+import { describe, expect, it } from "vite-plus/test";
+import { mkForce, mkIf, nix, NixOS, Options, path, type Package, Types } from "./index.ts";
 
 interface TestOptions {
-  readonly services: { readonly greeter: { readonly enable: boolean; readonly port: number; readonly users: ReadonlyArray<string> } }
-  readonly environment: { readonly systemPackages: ReadonlyArray<Package> }
+  readonly services: {
+    readonly greeter: {
+      readonly enable: boolean;
+      readonly port: number;
+      readonly users: ReadonlyArray<string>;
+    };
+  };
+  readonly environment: { readonly systemPackages: ReadonlyArray<Package> };
 }
 
-declare module "../src/index.ts" {
+declare module "./index.ts" {
   interface Register {
-    readonly nixos: TestOptions
+    readonly nixos: TestOptions;
   }
 }
 
@@ -35,7 +41,7 @@ const greeter = NixOS.module({
         ],
       },
     }),
-})
+});
 
 describe("NixOS.module", () => {
   it("renders the module with the arguments it uses", async () => {
@@ -65,34 +71,37 @@ describe("NixOS.module", () => {
     ];
   };
 }
-`)
-  })
+`);
+  });
 
   it("renders a generator's result, after its effects ran", async () => {
     const port = NixOS.module({
       config: function* () {
-        return { services: { greeter: { port: yield* Effect.succeed(9000) } } }
+        return { services: { greeter: { port: yield* Effect.succeed(9000) } } };
       },
-    })
-    expect(await Effect.runPromise(port.render)).toBe(`{ ... }:\n{\n  services.greeter.port = 9000;\n}\n`)
-  })
-})
+    });
+    expect(await Effect.runPromise(port.render)).toBe(
+      `{ ... }:\n{\n  services.greeter.port = 9000;\n}\n`,
+    );
+  });
+});
 
 // Definitions inside `mkIf` are checked against the options they define, like any other.
 NixOS.module({
-  // @ts-expect-error a misspelled option inside mkIf
-  config: ({ config }) => mkIf(config.services.greeter.enable, { services: { greeter: { prot: 1 } } }),
-})
+  config: ({ config }) =>
+    // @ts-expect-error a misspelled option inside mkIf
+    mkIf(config.services.greeter.enable, { services: { greeter: { prot: 1 } } }),
+});
 NixOS.module({
   // @ts-expect-error a string where a port belongs
   config: () => ({ services: { greeter: { port: "80" } } }),
-})
+});
 NixOS.module({
   // @ts-expect-error a string where a package belongs
   config: () => ({ environment: { systemPackages: ["git"] } }),
-})
+});
 NixOS.module({
   options: { greeter: { enable: Options.enable("the greeter") } },
   // @ts-expect-error reading an option no module declares
   config: ({ config }) => mkIf(config.greeter.enabled, {}),
-})
+});

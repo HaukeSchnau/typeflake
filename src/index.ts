@@ -1,4 +1,4 @@
-import * as Module from "./Module.ts"
+import * as Module from "./Module.ts";
 
 /**
  * The probed option types of each module class, by class: generated declarations add `nixos`,
@@ -7,7 +7,7 @@ import * as Module from "./Module.ts"
  */
 export interface Register {}
 
-export * as Ast from "./Ast.ts"
+export * as Ast from "./Ast.ts";
 export {
   type Definition,
   mkAfter,
@@ -18,10 +18,10 @@ export {
   mkMerge,
   mkOverride,
   type Override,
-  type Shape,
-} from "./Definition.ts"
-export type { Lib, Pkgs } from "./Lib.ts"
-export * as Module from "./Module.ts"
+  type Data,
+} from "./Definition.ts";
+export type { Lib, Pkgs } from "./Lib.ts";
+export * as Module from "./Module.ts";
 export {
   builtins,
   ifThenElse,
@@ -35,12 +35,12 @@ export {
   path,
   raw,
   type Unsupported,
-} from "./Nix.ts"
-export * as Options from "./Options.ts"
-export * as Probe from "./Probe.ts"
-export * as Typegen from "./Typegen.ts"
-export * as Types from "./Types.ts"
+} from "./Nix.ts";
+export * as Options from "./Options.ts";
+export * as Probe from "./Probe.ts";
+export * as Typegen from "./Typegen.ts";
+export * as Types from "./Types.ts";
 
-export const NixOS = { module: Module.make("nixos") }
-export const Darwin = { module: Module.make("darwin") }
-export const HomeManager = { module: Module.make("homeManager") }
+export const NixOS = { module: Module.make("nixos") };
+export const Darwin = { module: Module.make("darwin") };
+export const HomeManager = { module: Module.make("homeManager") };

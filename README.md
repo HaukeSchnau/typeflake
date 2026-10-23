@@ -4,10 +4,12 @@ Nix modules written in Effect TypeScript, typed against your own configurations'
 rendered to ordinary `.nix` files that build without Typeflake.
 
 ```ts
-import { mkIf, nix, NixOS, Options, path } from "typeflake"
+import { mkIf, nix, NixOS, Options, path } from "typeflake";
 
 export default NixOS.module({
-  options: { appStores: { enable: Options.enable("asc and gplay with the Urbs UG store credentials") } },
+  options: {
+    appStores: { enable: Options.enable("asc and gplay with the Urbs UG store credentials") },
+  },
   config: ({ config, lib, pkgs }) => {
     const asc = pkgs.writeShellApplication({
       name: "asc",
@@ -15,10 +17,10 @@ export default NixOS.module({
         ASC_PRIVATE_KEY=$(cat ${config.sops.secrets["app-store-connect/api-key"].path})
         exec ${lib.getExe(pkgs.callPackage(path("./asc-package.nix"), {}))} "$@"
       `,
-    })
-    return mkIf(config.appStores.enable, { environment: { systemPackages: [asc] } })
+    });
+    return mkIf(config.appStores.enable, { environment: { systemPackages: [asc] } });
   },
-})
+});
 ```
 
 `config.sops.secrets` is typed because the probe found sops-nix in the host's configuration, and a
@@ -30,7 +32,7 @@ would have written by hand.
 Early alpha. What works:
 
 - `src/probe.nix` walks a NixOS, nix-darwin or Home Manager configuration's options, submodules and
-  third-party modules included: 40,949 options on one real host in 11 seconds.
+  third-party modules included: 41,038 options on one real host in 11 seconds.
 - The type generator turns them into TypeScript declarations that register themselves with
   `typeflake`. A sample module checks against all 5.9 MB of them in under half a second.
 - `NixOS.module`, `Darwin.module` and `HomeManager.module` render modules. A port of a real module

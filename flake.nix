@@ -17,13 +17,11 @@
       devShells = forAll (
         pkgs:
         let
-          # npm stage, which releases use, arrived in npm 11.20; Node 24 ships 11.19.
-          nodejs = pkgs.nodejs_26;
+          tools = import ./nix/toolchain.nix { inherit pkgs; };
           shell = pkgs.mkShellNoCC {
             packages = [
-              nodejs
-              (pkgs.pnpm_11.override { nodejs-slim = pkgs.nodejs-slim_26; })
-              pkgs.bun
+              tools.nodejs
+              tools.pnpm
               pkgs.nixfmt
               # The tests evaluate rendered Nix.
               pkgs.nix

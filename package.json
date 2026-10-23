@@ -3,25 +3,31 @@
   "version": "0.1.0-alpha.0",
   "description": "Typed Nix modules written in Effect TypeScript.",
   "keywords": [
-    "nix",
-    "nixos",
-    "home-manager",
-    "nix-darwin",
     "effect",
+    "home-manager",
+    "nix",
+    "nix-darwin",
+    "nixos",
     "typescript"
   ],
   "homepage": "https://typeflake.schnau.dev",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/HaukeSchnau/typeflake.git"
-  },
   "bugs": {
     "url": "https://github.com/HaukeSchnau/typeflake/issues"
   },
   "license": "MIT",
   "author": "Hauke Schnau <hauke@schnau.dev>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/HaukeSchnau/typeflake.git"
+  },
+  "bin": {
+    "typeflake": "./dist/Cli.js"
+  },
+  "files": [
+    "dist",
+    "src/probe.nix"
+  ],
   "type": "module",
-  "packageManager": "pnpm@11.27.0",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -29,23 +35,29 @@
     },
     "./package.json": "./package.json"
   },
-  "files": [
-    "dist",
-    "src/probe.nix"
-  ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
-    "check": "tsc -p . && tsc -p tsconfig.build.json --noEmit",
-    "test": "vitest run",
+    "check": "vp check",
+    "test": "vp test run",
+    "prepare": "effect-tsgo patch --oxlint && vp config --no-agent",
     "prepack": "tsc -p tsconfig.build.json"
   },
   "dependencies": {
-    "effect": "4.0.0"
+    "@effect/platform-node": "^4.0.6",
+    "effect": "^4.0.6"
   },
   "devDependencies": {
-    "@effect/vitest": "4.0.0",
-    "@types/bun": "1.4.2",
-    "typescript": "7.0.2",
-    "vitest": "5.0.3"
-  }
+    "@effect/tsgo": "^0.56.0",
+    "@effect/vitest": "^4.0.6",
+    "@oxlint/plugins": "1.89.0",
+    "@types/node": "^26.6.5",
+    "oxlint": "1.89.0",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.5",
+    "vite-plus": "^1.4.0"
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "packageManager": "pnpm@11.27.0"
 }
