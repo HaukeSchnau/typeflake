@@ -1,0 +1,18 @@
+{
+  "PermitRootLogin": {
+    "id": "/nix/store/fjr02205wq70r3vghhfbfzv5g97nr4ya-source/nixos/modules/services/networking/ssh/sshd.nix:554:15#PermitRootLogin",
+    "description": "Whether the root user can login using ssh.\n",
+    "type": {
+      "description": "null or one of \"yes\", \"without-password\", \"prohibit-password\", \"forced-commands-only\", \"no\"",
+      "name": "nullOr",
+      "nested": {
+        "elemType": {
+          "description": "one of \"yes\", \"without-password\", \"prohibit-password\", \"forced-commands-only\", \"no\"",
+          "name": "enum",
+          "values": ["yes", "without-password", "prohibit-password", "forced-commands-only", "no"]
+        }
+      }
+    },
+    "visible": true
+  }
+}

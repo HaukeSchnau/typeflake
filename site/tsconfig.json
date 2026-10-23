@@ -1,0 +1,10 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "lib": ["ES2024", "DOM", "DOM.Iterable"],
+    "module": "preserve",
+    "moduleResolution": "bundler",
+    "types": ["node", "vite/client"]
+  },
+  "include": ["src", "build", "data", "scripts", "vite.config.ts", "alchemy.run.ts"]
+}

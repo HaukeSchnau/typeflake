@@ -1,0 +1,16 @@
+export type ServicesOpensshSettingsPermitRootLoginValue = "yes" | "without-password" | "prohibit-password" | "forced-commands-only" | "no" | null
+
+export interface ServicesOpensshSettings {
+  /**
+   * Specifies whether password authentication is allowed.
+   */
+  readonly PasswordAuthentication: boolean | null
+  /**
+   * Whether the root user can login using ssh.
+   */
+  readonly PermitRootLogin: ServicesOpensshSettingsPermitRootLoginValue
+  /**
+   * Whether to enable printing /etc/motd when a user logs in interactively.
+   */
+  readonly PrintMotd: boolean | null
+}
