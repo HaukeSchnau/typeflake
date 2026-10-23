@@ -6,5 +6,5 @@
     "moduleResolution": "bundler",
     "types": ["node", "vite/client"]
   },
-  "include": ["src", "build", "data", "scripts", "vite.config.ts", "alchemy.run.ts"]
+  "include": ["src", "prerender", "data", "scripts", "vite.config.ts", "alchemy.run.ts"]
 }

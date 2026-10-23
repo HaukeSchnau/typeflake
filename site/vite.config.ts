@@ -1,5 +1,5 @@
 import { defineConfig, type Plugin } from "vite";
-import { fragments } from "./build/fragments.ts";
+import { fragments } from "./prerender/fragments.ts";
 
 // index.html marks where build-time HTML goes with `<!-- @name -->`. Hyphenated words in its prose,
 // such as srv-2 and nix-darwin, would otherwise break at the hyphen on a phone.
