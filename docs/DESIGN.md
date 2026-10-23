@@ -34,11 +34,11 @@ options and interpolate store paths into strings, and the prototype could expres
 - Bun runs the CLI and imports modules directly, so there is no TypeScript compiler at runtime.
   Typechecking is the editor's and `typeflake check`'s job.
 
-A module, as currently planned:
+A module, condensed from the port of infra's `modules/features/app-stores`:
 
 ```ts
 export default NixOS.module({
-  options: { appStores: { enable: Opt.enable("asc and gplay with the Urbs UG store credentials") } },
+  options: { appStores: { enable: Options.enable("asc and gplay with the Urbs UG store credentials") } },
   config: ({ config, lib, pkgs }) => {
     const secrets = config.sops.secrets
     const asc = pkgs.writeShellApplication({
@@ -57,7 +57,25 @@ export default NixOS.module({
 ```
 
 Typeflake calls `config` once with proxies, and property access builds Nix AST. Nothing is evaluated in
-Bun. TypeScript can't branch on a `Nix<boolean>`, so conditions go through `mkIf`.
+Bun. TypeScript can't branch on a `Nix<boolean>`, so conditions go through `mkIf` or `ifThenElse`.
+
+How the pieces fit:
+
+- `Nix<T>` is an expression that evaluates to `T`, with symbol keys so it can't collide with option
+  names. `NixProxy<T>` adds its fields as expressions and keeps function signatures, so
+  `lib.getExe(pkg)` is typed by `Lib`.
+- An option slot accepts `Definition<T> = Shape<T> | Nix<T> | Override<Shape<T>>`. `mkIf`, `mkForce`
+  and the rest take their content type with `NoInfer`, so it comes from the slot. A typo inside `mkIf`
+  fails like one outside it, excess properties included.
+- `` nix`...` `` dedents exactly like a Nix `''` string, so scripts move from Nix unchanged. The
+  printer only writes `''` strings when the dedent provably returns the value. Otherwise it writes
+  escaped `"..."` strings, so rendering never changes a string. Tests evaluate both against Nix.
+- A module's formals are the variables its body uses: config, lib, pkgs and any `specialArgs` such as
+  infra's `self`, which a project types through `Register.args`.
+- `Register` is declared in the package's entry module, because `declare module "typeflake"` only
+  merges into interfaces that module declares itself. `NixOS.module` has the named type
+  `Module.Maker<"nixos">`, so the declaration build doesn't resolve the options against Typeflake's
+  own empty `Register`.
 
 ## Option probe
 
@@ -90,6 +108,17 @@ become interfaces named after their first option path, and identical ones are sh
 submodule gets an index signature that also admits its fields' types. What a module may write is
 derived with a mapped type, `Definition<T> = Shape<T> | Nix<T>`, rather than generated twice.
 
+## The first port
+
+`.typeflake/port` (local, not committed) holds a port of infra's `modules/features/app-stores` against
+srv-2's generated types. It typechecks in 0.77 s, and four mistakes injected into it all fail.
+
+To compare, each host swaps the module for a copy of the original or for the rendered port, with
+`extendModules` and `disabledModules`, both sitting next to the original's files. Swapping in the copy
+only moves `asc` and `gplay` within `environment.systemPackages`, the same 417 packages in another
+order, because the swapped module comes last. Against that copy the port's `drvPath` is identical,
+on srv-2 and on m1.
+
 ## Measurements
 
 Taken on 2026-10-23 against `~/infra` on srv-2, with TypeScript 7.0.2:
@@ -113,15 +142,18 @@ nixpkgs' `systemd option`.
 - Name recursive format types after their description (`JSON value`) instead of unrolling them.
 - Map `systemd option`, `dagOf`, disko's `subType` and the other custom types worth typing.
 - `Shape<T>` still allows writing `readOnly` options.
+- `pkgs` has an index signature until package names are generated, so `noUncheckedIndexedAccess`
+  makes every package `| undefined`. Module projects turn it off for now. `attrsOf` options have the
+  same problem, which is more honest there: a missing attribute fails at evaluation.
+- Modules shared by NixOS and nix-darwin need a generated type for the options both classes have.
 - Union members are deduplicated as text, so the generated unions repeat `| null`.
 - When to re-probe: on `flake.lock` changes for now. Options a TypeScript module declares are inferred
   locally, so editing one needs no probe.
 
 ## Next
 
-1. Nix AST and printer, `Nix<T>`, `` nix`...` ``, module rendering. Port `app-stores` without
-   changing srv-2's `drvPath`.
-2. The `config`, `pkgs` and `lib` proxies, `mkIf` and friends, and option declarations. Port a
-   module with submodule options and one shared between NixOS and darwin.
-3. The CLI: render every module, re-probe when the lock changes, and fail `check` on drift.
-4. Later: `flake.ts`, typed flake inputs, nested package sets.
+1. The CLI: render every module next to its `.ts`, probe and regenerate types when the lock changes,
+   and fail `check` on drift. Generate package names with the probe.
+2. Port a module with submodule options and one shared between NixOS and darwin, through the CLI,
+   into infra.
+3. Later: `flake.ts`, typed flake inputs, nested package sets.
