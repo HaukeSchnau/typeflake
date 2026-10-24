@@ -1,6 +1,6 @@
 import * as Effect from "effect/Effect";
 import { describe, expect, it } from "vite-plus/test";
-import { mkForce, mkIf, nix, NixOS, Options, path, type Package, Types } from "./index.ts";
+import { define, mkForce, mkIf, nix, NixOS, Options, path, type Package, Types } from "./index.ts";
 
 interface TestOptions {
   readonly services: {
@@ -77,9 +77,16 @@ describe("NixOS.module", () => {
   it("renders a generator's result, after its effects ran", async () => {
     const port = NixOS.module({
       config: function* () {
-        return { services: { greeter: { port: yield* Effect.succeed(9000) } } };
+        return define({ services: { greeter: { port: yield* Effect.succeed(9000) } } });
       },
     });
+    expect(await Effect.runPromise(port.render)).toBe(
+      `{ ... }:\n{\n  services.greeter.port = 9000;\n}\n`,
+    );
+  });
+
+  it("renders definitions given without a function", async () => {
+    const port = NixOS.module({ config: { services: { greeter: { port: 9000 } } } });
     expect(await Effect.runPromise(port.render)).toBe(
       `{ ... }:\n{\n  services.greeter.port = 9000;\n}\n`,
     );
@@ -94,11 +101,23 @@ NixOS.module({
 });
 NixOS.module({
   // @ts-expect-error a string where a port belongs
-  config: () => ({ services: { greeter: { port: "80" } } }),
+  config: { services: { greeter: { port: "80" } } },
 });
 NixOS.module({
-  // @ts-expect-error a string where a package belongs
-  config: () => ({ environment: { systemPackages: ["git"] } }),
+  config: ({ pkgs }) =>
+    define({
+      // @ts-expect-error a string where a package belongs
+      environment: { systemPackages: [pkgs.git, "ripgrep"] },
+    }),
+});
+NixOS.module({
+  config: () =>
+    // @ts-expect-error a misspelled option next to a correct one
+    define({ services: { greeter: { enable: true, prot: 1 } } }),
+});
+NixOS.module({
+  // @ts-expect-error a returned object literal, which TypeScript wouldn't check for misspelled keys
+  config: () => ({ services: { greeter: { enable: true } } }),
 });
 NixOS.module({
   options: { greeter: { enable: Options.enable("the greeter") } },

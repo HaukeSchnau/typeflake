@@ -2,7 +2,7 @@ import * as Effect from "effect/Effect";
 import { type Pipeable, pipeArguments } from "effect/Pipeable";
 import * as Predicate from "effect/Predicate";
 import * as Ast from "./Ast.ts";
-import type { Definition, OptionsOf } from "./Definition.ts";
+import type { Data, Definition, OptionsOf, Override } from "./Definition.ts";
 import type { Register } from "./index.ts";
 import type { Lib, Pkgs } from "./Lib.ts";
 import * as Nix from "./Nix.ts";
@@ -28,22 +28,27 @@ export type Args<Options> = {
   readonly pkgs: Nix.NixProxy<Pkgs>;
 } & { readonly [K in keyof ExtraArgs]: Nix.NixProxy<ExtraArgs[K]> };
 
+/** What a module function returns: definitions made with `define`, `mkIf` or another helper, or an expression. */
+export type Defined<T> = Override<Data<T>> | Nix.Nix<T>;
+
 export interface Definitions<
   Options,
   D extends Declarations,
   Eff extends Effect.Effect<unknown, unknown, unknown>,
 > {
-  /** The options the module declares. `config` sees them before a probe does, and only they decide `D`. */
+  /** The options the module declares. `config` reads them before a probe does, and only they decide `D`. */
   readonly options?: D;
   /**
-   * Called once with expressions for the module's arguments. A generator may yield effects, whose
-   * services the module then needs to render.
+   * The module's definitions, or a function that makes them from expressions for the module's
+   * arguments. A generator function may yield effects, whose services the module then needs to render.
+   * Definitions are typed by the probed options only, since a callback without parameters is checked
+   * before `D` is known.
    */
-  readonly config: (
-    args: Args<NoInfer<Options & Infer<D>>>,
-  ) =>
-    | Definition<NoInfer<Options & Infer<D>>>
-    | Generator<Eff, Definition<NoInfer<Options & Infer<D>>>, never>;
+  readonly config:
+    | Definition<Options>
+    | ((
+        args: Args<NoInfer<Options & Infer<D>>>,
+      ) => Defined<Options> | Generator<Eff, Defined<Options>, never>);
 }
 
 /**
@@ -98,10 +103,15 @@ export const make =
     definitions: Definitions<OptionsOf<Class>, D, Eff>,
   ): Module<Class, YieldedError<Eff>, YieldedServices<Eff>> => {
     const render = Effect.gen(function* () {
-      // SAFETY: `args` answers every argument with an expression for it, which is what `Args`
-      // promises; TypeScript can't see through a Proxy.
-      // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-      const result = definitions.config(args as Args<OptionsOf<Class> & Infer<D>>);
+      const made = definitions.config;
+      // An expression is a callable proxy, so only a function that isn't one makes the definitions.
+      const result =
+        Predicate.isFunction(made) && !Nix.isNix(made)
+          ? // SAFETY: `args` answers every argument with an expression for it, which is what `Args`
+            // promises; TypeScript can't see through a Proxy.
+            // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+            made(args as Args<OptionsOf<Class> & Infer<D>>)
+          : made;
       const config = Nix.toExpr(isGenerator(result) ? yield* Effect.gen(() => result) : result);
       const body =
         definitions.options === undefined && config._tag === "Attrs"

@@ -1,3 +1,4 @@
+import type { Register } from "./index.ts";
 import type { Interpolation, Nix, NixPath, NixProxy, NixValue, Package } from "./Nix.ts";
 
 type Text = string | Nix<string>;
@@ -34,8 +35,8 @@ export interface WriteShellApplication {
   readonly bashOptions?: ReadonlyArray<string>;
 }
 
-/** `pkgs`: any attribute is a package, besides the builders typed here. Module arguments wrap it in `NixProxy`. */
-export type Pkgs = { readonly [name: string]: Package } & {
+/** The functions in `pkgs` that Typeflake types. */
+export interface Builders {
   readonly stdenv: Stdenv;
   readonly callPackage: (
     path: Nix<NixPath>,
@@ -44,4 +45,12 @@ export type Pkgs = { readonly [name: string]: Package } & {
   readonly writeShellApplication: (options: WriteShellApplication) => NixProxy<Package>;
   readonly writeShellScriptBin: (name: Text, text: Text) => NixProxy<Package>;
   readonly writeText: (name: Text, text: Text) => NixProxy<Package>;
-};
+}
+
+/** The names `typeflake types` found in the probed `pkgs`, or any name before a probe. */
+type Packages = Register extends { readonly pkgs: infer P }
+  ? P
+  : { readonly [name: string]: Package };
+
+/** `pkgs`: the builders typed here, and a package for every other name. Module arguments wrap it in `NixProxy`. */
+export type Pkgs = Omit<Packages, keyof Builders> & Builders;

@@ -30,6 +30,28 @@ describe("generate", () => {
     );
   });
 
+  it("accepts a package where a path may be in the store", () => {
+    const source = generateNixos({
+      root: option({ name: "path", inStore: null }),
+      passwordFile: option({ name: "path", inStore: false }),
+    });
+
+    expect(source).toContain("readonly root: NixPath | Package");
+    expect(source).toContain("readonly passwordFile: NixPath\n");
+  });
+
+  it("registers the probed package names as pkgs", () => {
+    const source = generate(
+      {},
+      { rootClass: "nixos", importFrom: "typeflake", packages: ["git", "0ad"] },
+    ).source;
+
+    expect(source).toContain(
+      'export interface Packages {\n  readonly git: Package\n  readonly "0ad": Package\n}',
+    );
+    expect(source).toContain("readonly pkgs: Packages");
+  });
+
   it("aliases an option that contains itself, and points the inner one at the alias", () => {
     const content: NixType = {
       name: "submodule",

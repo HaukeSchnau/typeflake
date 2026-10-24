@@ -22,6 +22,32 @@ let
 
   isOption = value: builtins.isAttrs value && (value._type or null) == "option";
 
+  # Some options throw when the walk reads them. Home Manager's `pkgs` needs `home.stateVersion`, which
+  # a submodule's options have no value for, so an option whose type, visibility or defaults use
+  # `pkgs` throws unless `useGlobalPkgs` is on. Such an option becomes unknown instead of failing the
+  # probe. Probe records are plain data, so forcing them whole is safe; types may be infinite.
+  orElse =
+    fallback: value:
+    let
+      result = builtins.tryEval (builtins.deepSeq value value);
+    in
+    if result.success then result.value else fallback;
+
+  throws = value: !(builtins.tryEval value).success;
+
+  unknown = {
+    id = null;
+    visible = true;
+    type = {
+      name = "unknown";
+      truncated = true;
+    };
+    description = null;
+    default = null;
+    readOnly = false;
+    internal = false;
+  };
+
   # Descriptions and defaultText are strings or `literalExpression`/`literalMD` wrappers.
   text =
     value:
@@ -31,6 +57,10 @@ let
       value.text
     else
       null;
+
+  # A submodule's description reads its freeform type, which throws like the options above. The
+  # submodule's options still have types, so only the description goes.
+  description = type: orElse null (text (type.description or null));
 
   optionId =
     opt:
@@ -47,11 +77,19 @@ let
   walk =
     scope: attrs:
     builtins.mapAttrs
-      (_: node: if isOption node then option scope node else { group = walk scope node; })
+      (
+        _: node:
+        if throws node then
+          unknown
+        else if isOption node then
+          orElse unknown (option scope node)
+        else
+          { group = walk scope node; }
+      )
       (
         builtins.removeAttrs
           (builtins.listToAttrs (
-            builtins.filter (entry: builtins.isAttrs entry.value) (
+            builtins.filter (entry: throws entry.value || builtins.isAttrs entry.value) (
               map (name: {
                 inherit name;
                 value = attrs.${name};
@@ -93,7 +131,7 @@ let
             optionRef = id;
           }
         else
-          typeOf inner 0 opt.type // { description = text (opt.type.description or null); };
+          typeOf inner 0 opt.type // { description = description opt.type; };
       description = text (opt.description or null);
       default = text (opt.defaultText or null);
       readOnly = opt.readOnly or false;
@@ -104,8 +142,13 @@ let
     scope: typeDepth: type:
     let
       name = type.name or "unknown";
+      # A submodule's `nestedTypes` reads its freeform type, which throws like the options above.
       # `attrTag` lists options rather than types.
-      nested = builtins.mapAttrs (_: t: if isOption t then t.type else t) (type.nestedTypes or { });
+      nested =
+        if throws (type.nestedTypes or { }) then
+          { }
+        else
+          builtins.mapAttrs (_: t: if isOption t then t.type else t) (type.nestedTypes or { });
       # Read `functor` only where needed: some modules' custom types define a broken one.
       submoduleClass = if name == "submodule" then type.functor.payload.class or null else null;
     in
@@ -129,10 +172,14 @@ let
         inherit name;
       }
       // (if name == "enum" then { values = type.functor.payload.values; } else { })
+      # `pathWith { inStore = false; }` takes strings only; other paths also take derivations.
+      // (
+        if name == "path" then { inStore = orElse null (type.functor.payload.inStore or null); } else { }
+      )
       // (if submoduleClass != null then { class = submoduleClass; } else { })
       // (
         if nested == { } then
-          { description = text (type.description or null); }
+          { description = description type; }
         else
           { nested = builtins.mapAttrs (_: typeOf scope (typeDepth + 1)) nested; }
       )

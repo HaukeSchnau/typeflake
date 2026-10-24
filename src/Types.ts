@@ -22,7 +22,7 @@ export const lines: Type<string> = named("lines");
 export const int: Type<number> = named("int");
 export const float: Type<number> = named("float");
 export const port: Type<number> = named("port");
-export const path: Type<Nix.NixPath> = named("path");
+export const path: Type<Nix.NixPath | Nix.Package> = named("path");
 const derivation: Type<Nix.Package> = named("package");
 export { derivation as package };
 export const anything: Type<Nix.NixValue> = named("anything");

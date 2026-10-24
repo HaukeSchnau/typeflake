@@ -9,7 +9,7 @@ import * as ChildProcessSpawner from "effect/process/ChildProcessSpawner";
 import * as Schema from "effect/Schema";
 import * as Stream from "effect/Stream";
 import { isModule, type Module } from "./Module.ts";
-import { decodeOptionTree } from "./Probe.ts";
+import { decodeProbed } from "./Probe.ts";
 import { generate } from "./Typegen.ts";
 
 export class ImportFailed extends Schema.TaggedError<
@@ -152,7 +152,7 @@ const probeFile = fileURLToPath(new URL("../src/probe.nix", import.meta.url));
 const text = (stream: Stream.Stream<Uint8Array, PlatformError.PlatformError>) =>
   stream.pipe(Stream.decodeText(), Stream.mkString);
 
-/** The JSON `probe.nix` makes of `<flake>#<configuration>.options`. */
+/** `<flake>#<configuration>`'s options as `probe.nix` makes them, and the names in its `pkgs`, as JSON. */
 export const probe = (flake: string, configuration: string) =>
   Effect.scoped(
     Effect.gen(function* () {
@@ -162,9 +162,12 @@ export const probe = (flake: string, configuration: string) =>
           "eval",
           "--impure",
           "--json",
-          `${flake}#${configuration}.options`,
+          `${flake}#${configuration}`,
           "--apply",
-          `import ${JSON.stringify(probeFile)} { class = ${JSON.stringify(classOf(configuration))}; }`,
+          `configuration: {
+            options = import ${JSON.stringify(probeFile)} { class = ${JSON.stringify(classOf(configuration))}; } configuration.options;
+            packages = builtins.attrNames (configuration.pkgs or { });
+          }`,
         ]),
       );
       const [stdout, stderr, exitCode] = yield* Effect.all(
@@ -191,8 +194,9 @@ export const types = (root: string, flake: string, configurations: ReadonlyArray
     yield* fs.makeDirectory(directory, { recursive: true });
     let registered: ReadonlySet<string> = new Set();
     for (const configuration of configurations) {
-      const tree = yield* decodeOptionTree(yield* probe(flake, configuration));
-      const generated = generate(tree, {
+      const { options, packages } = yield* decodeProbed(yield* probe(flake, configuration));
+      const generated = generate(options, {
+        packages,
         rootClass: classOf(configuration),
         importFrom: "typeflake",
         registered,

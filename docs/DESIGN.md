@@ -74,9 +74,17 @@ How the pieces fit:
 - `Nix<T>` is an expression that evaluates to `T`, with symbol keys so it can't collide with option
   names. `NixProxy<T>` adds its fields as expressions and keeps function signatures, so
   `lib.getExe(pkg)` is typed by `Lib`.
-- An option slot accepts `Definition<T> = Shape<T> | Nix<T> | Override<Shape<T>>`. `mkIf`, `mkForce`
+- An option slot accepts `Definition<T> = Data<T> | Nix<T> | Override<Data<T>>`. `mkIf`, `mkForce`
   and the rest take their content type with `NoInfer`, so it comes from the slot. A typo inside `mkIf`
   fails like one outside it, excess properties included.
+- TypeScript checks an object literal for keys its type lacks only as an argument, an annotated
+  return or an assignment, never as the value a callback returns (microsoft/TypeScript#241). A
+  `config` function therefore returns its definitions through `define`, `mkIf` or another helper,
+  and its return type rules out a plain object, so a misspelled option next to a correct one fails.
+  `config` may also be the definitions themselves, for a module that needs no arguments.
+- A callback without parameters is checked before `D` is inferred from `options`, so definitions are
+  typed by the probed options alone. A module reads its own options before any probe, but defining
+  their values in the same module waits for one.
 - `` nix`...` `` dedents exactly like a Nix `''` string, so scripts move from Nix unchanged. The
   printer only writes `''` strings when the dedent provably returns the value. Otherwise it writes
   escaped `"..."` strings, so rendering never changes a string. Tests evaluate both against Nix.
@@ -111,12 +119,24 @@ parses descriptions. Walking a real host's graph turned up these constraints:
 - `home-manager.users` is `visible = "shallow"`, which only keeps sub-options out of the manual. The
   probe expands it, so one NixOS probe yields both the NixOS and Home Manager types.
 - Reading `functor` on every type hits broken custom types (autorandr), so the probe reads it only on
-  submodules and enums.
+  submodules, enums and paths.
+- Some options throw when read. Home Manager's `pkgs` needs `home.stateVersion`, which a submodule's
+  options have no value for, so without `useGlobalPkgs` 524 of its options throw. The probe records
+  such an option as unknown (`NixValue`) and goes on. It guards each option once with `tryEval` and
+  `deepSeq` over the probe's own record, which is plain data, never over a type, which may be
+  infinite. A submodule's `nestedTypes` and description read its freeform type, so they get
+  shallow guards of their own. srv-2's and m1's probe output didn't change.
+- The same `nix eval` lists the top-level names in the configuration's `pkgs`. `Pkgs` types each as
+  a package, besides the builders `Lib.ts` types, so `noUncheckedIndexedAccess` no longer makes
+  `pkgs.git` possibly `undefined` and `pkgs.ripgerp` fails. Classifying the names would take 25 s
+  and 1.9 GB for nixpkgs, so package sets such as `python3Packages` are typed as packages for now.
 
 `src/Typegen.ts` turns the tree into interfaces describing evaluated values. Groups and submodules
 become interfaces named after their first option path, and identical ones are shared. A freeform
 submodule gets an index signature that also admits its fields' types. What a module may write is
-derived with a mapped type, `Definition<T> = Shape<T> | Nix<T>`, rather than generated twice.
+derived with a mapped type, `Definition<T> = Data<T> | Nix<T>`, rather than generated twice. A
+`types.path` option accepts a package too, as Nix does, unless the path must be outside the store.
+Generated files import only the names they use, so a project's `noUnusedLocals` accepts them.
 
 ## The first port
 
@@ -147,14 +167,22 @@ and infra's own options. Ten deliberate mistakes in it all fail to typecheck.
 About 240 option positions fall back to `Unsupported`, across 25 custom types. 152 of them are
 nixpkgs' `systemd option`.
 
+The website's example, `site/example`, is a made-up flake with a NixOS server (Home Manager and a blog
+module) and a nix-darwin laptop. On 2026-10-24 its server had 30,419 visible options and 28,458
+package names, `typeflake types` took 13.9 s for both configurations, and `tsc` checked the example
+against the 7.0 MB of declarations in 2.6 s. `site/scripts/example.ts` measures it again.
+
 ## Open
 
 - Name recursive format types after their description (`JSON value`) instead of unrolling them.
 - Map `systemd option`, `dagOf`, disko's `subType` and the other custom types worth typing.
-- `Shape<T>` still allows writing `readOnly` options.
-- `pkgs` has an index signature until package names are generated, so `noUncheckedIndexedAccess`
-  makes every package `| undefined`. Module projects turn it off for now. `attrsOf` options have the
-  same problem, which is more honest there: a missing attribute fails at evaluation.
+- `Data<T>` still allows writing `readOnly` options.
+- Reading an `attrsOf` option through `config` is `| undefined` under `noUncheckedIndexedAccess`.
+  That is more honest than it was for `pkgs`: a missing attribute fails at evaluation.
+- Long unions are hoisted into aliases such as `ServicesOpensshSettingsPermitRootLoginValue`, which
+  hides an enum's values in error messages.
+- `NixProxy<boolean>` distributes into `Nix<true> | Nix<false>`, so a boolean in the wrong place
+  reports `Nix<boolean> & Nix<false>` and `Override`'s brand.
 - Modules shared by NixOS and nix-darwin need a generated type for the options both classes have.
 - Union members are deduplicated as text, so the generated unions repeat `| null`.
 - When to re-probe: on `flake.lock` changes for now. Options a TypeScript module declares are inferred
@@ -163,8 +191,8 @@ nixpkgs' `systemd option`.
 ## Next
 
 1. The CLI renders every `*.nix.ts` module (`typeflake render`, `--check` for drift) and probes
-   configurations into `.typeflake/` (`typeflake types nixosConfigurations.srv-2`). Next: re-probe
-   when the lock changes, and generate package names with the probe.
+   configurations into `.typeflake/` (`typeflake types nixosConfigurations.srv-2`), options and
+   package names. Next: re-probe when the lock changes.
 2. Port a module with submodule options and one shared between NixOS and darwin, through the CLI,
    into infra.
 3. Later: `flake.ts`, typed flake inputs, nested package sets.

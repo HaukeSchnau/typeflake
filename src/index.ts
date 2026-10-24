@@ -2,7 +2,8 @@ import * as Module from "./Module.ts";
 
 /**
  * The probed option types of each module class, by class: generated declarations add `nixos`,
- * `darwin` and `homeManager`, and a project adds `args` for its `specialArgs`. It lives here because
+ * `darwin` and `homeManager`, and the probed package names as `pkgs`. A project adds `args` for its
+ * `specialArgs`. It lives here because
  * `declare module "typeflake"` only merges into interfaces this module declares itself.
  */
 export interface Register {}
@@ -10,6 +11,7 @@ export interface Register {}
 export * as Ast from "./Ast.ts";
 export {
   type Definition,
+  define,
   mkAfter,
   mkBefore,
   mkDefault,
@@ -20,7 +22,7 @@ export {
   type Override,
   type Data,
 } from "./Definition.ts";
-export type { Lib, Pkgs } from "./Lib.ts";
+export type { Builders, Lib, Pkgs } from "./Lib.ts";
 export * as Module from "./Module.ts";
 export {
   builtins,

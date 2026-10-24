@@ -13,6 +13,8 @@ export interface NixType {
   /** The module class of a submodule that has one. */
   readonly class?: string;
   readonly values?: ReadonlyArray<string | number | boolean | null>;
+  /** Whether a path must be in the store (`true`) or outside it (`false`). */
+  readonly inStore?: boolean | null;
   readonly nested?: { readonly [key: string]: NixType };
   readonly alternatives?: ReadonlyArray<NixType>;
   readonly options?: OptionTree;
@@ -49,6 +51,7 @@ const NixType: Schema.Codec<NixType> = Schema.Struct({
   values: Schema.Array(
     Schema.Union([Schema.String, Schema.Finite, Schema.Boolean, Schema.Null]),
   ).pipe(Schema.optionalKey),
+  inStore: Schema.NullOr(Schema.Boolean).pipe(Schema.optionalKey),
   nested: Schema.Record(Schema.String, suspendedType).pipe(Schema.optionalKey),
   alternatives: Schema.Array(suspendedType).pipe(Schema.optionalKey),
   options: Schema.suspend((): Schema.Codec<OptionTree> => OptionTree).pipe(Schema.optionalKey),
@@ -73,5 +76,10 @@ const OptionTree: Schema.Codec<OptionTree> = Schema.Record(
 );
 
 export const decodeOptionTree = Schema.decodeUnknownEffect(Schema.fromJsonString(OptionTree));
+
+/** What `typeflake types` reads from one configuration: its options and the names in its `pkgs`. */
+export const Probed = Schema.Struct({ options: OptionTree, packages: Schema.Array(Schema.String) });
+
+export const decodeProbed = Schema.decodeUnknownEffect(Schema.fromJsonString(Probed));
 
 export const isGroup = (node: NixOption | OptionGroup): node is OptionGroup => "group" in node;

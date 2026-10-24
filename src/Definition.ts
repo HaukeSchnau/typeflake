@@ -47,6 +47,16 @@ const wrap = <S>(fn: string, ...args: ReadonlyArray<Ast.Expr>): Override<S> => (
 // The content types are inferred from where a definition goes, never from the content itself, so
 // a typo inside `mkIf` fails like one outside it.
 
+/**
+ * Definitions to make as they are. A module function returns its definitions through `define`,
+ * `mkIf` or another helper because TypeScript checks an object literal for misspelled keys only as
+ * an argument, not as a callback's return value (microsoft/TypeScript#241).
+ */
+export const define = <S>(value: NoInfer<S>): Override<S> => ({
+  ...Nix.make<unknown>(Nix.toExpr(value)),
+  [OverrideId]: variance,
+});
+
 /** Defines `value` only while `condition` holds, without evaluating `value` otherwise. */
 export const mkIf = <S>(condition: boolean | Nix.Nix<boolean>, value: NoInfer<S>): Override<S> =>
   wrap("mkIf", Nix.toExpr(condition), Nix.toExpr(value));
