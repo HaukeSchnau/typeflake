@@ -31,11 +31,12 @@ const generated = [
   "*.tsbuildinfo",
   ".alchemy",
   "**/.alchemy",
+  "site/data/graph.json",
 ];
 
 export default defineConfig({
   fmt: {
-    ignorePatterns: [...generated, ...agentTooling, "tools/oxlint/anti-slop/**", ".typeflake"],
+    ignorePatterns: [...generated, ...agentTooling, "tools/oxlint/anti-slop/**", "**/.typeflake"],
     sortPackageJson: {},
   },
   lint: {
@@ -43,8 +44,15 @@ export default defineConfig({
       { name: "anti-slop", specifier: "./tools/oxlint/anti-slop/index.ts" },
       { name: "anti-slop-effect", specifier: "./tools/oxlint/anti-slop/effect/index.ts" },
     ],
-    // `.typeflake` holds generated types and local experiments, which nothing imports.
-    ignorePatterns: [...generated, ...agentTooling, "tools/oxlint/anti-slop/**", ".typeflake"],
+    // `.typeflake` holds generated types and local experiments, which nothing imports. The site's
+    // example checks against types probed from nixpkgs, which site/scripts/example.ts generates.
+    ignorePatterns: [
+      ...generated,
+      ...agentTooling,
+      "tools/oxlint/anti-slop/**",
+      "**/.typeflake",
+      "site/example/**",
+    ],
     plugins: ["effecttsgo", "eslint", "oxc", "unicorn", "typescript"],
     categories: {
       correctness: "error",

@@ -3,11 +3,11 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content="#0f3d6e" />
     <title>Typeflake: Nix modules in TypeScript</title>
     <meta
       name="description"
-      content="Typeflake writes Nix modules in Effect TypeScript. Its types come from the option graph of your own NixOS, nix-darwin and Home Manager configurations, and every module renders to a plain .nix file."
+      content="Write NixOS, nix-darwin and Home Manager modules in TypeScript, typed by the options your own flake has, and render them to plain .nix files that build with Nix alone."
     />
     <link rel="canonical" href="https://typeflake.schnau.dev/" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
@@ -15,478 +15,356 @@
     <meta property="og:title" content="Typeflake: Nix modules in TypeScript" />
     <meta
       property="og:description"
-      content="Nix modules in Effect TypeScript, typed by the option graph of your own configurations and rendered to plain .nix files."
+      content="Modules typed by the options your own flake has, rendered to plain .nix files."
     />
     <meta property="og:url" content="https://typeflake.schnau.dev/" />
+    <meta property="og:image" content="https://typeflake.schnau.dev/social.png" />
+    <meta name="twitter:card" content="summary_large_image" />
     <script type="module" src="/src/main.ts"></script>
   </head>
   <body>
     <a class="skip" href="#main">Skip to the content</a>
 
-    <header class="top wrap">
-      <a class="brand" href="/">
-        <svg class="mark" viewBox="0 0 32 32" width="28" height="28" aria-hidden="true">
-          <g fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round">
-            <path id="arm" d="M16 16V4.6M12 4.6h8" />
-            <use href="#arm" transform="rotate(60 16 16)" />
-            <use href="#arm" transform="rotate(120 16 16)" />
-            <use href="#arm" transform="rotate(180 16 16)" />
-            <use href="#arm" transform="rotate(240 16 16)" />
-            <use href="#arm" transform="rotate(300 16 16)" />
-          </g>
-        </svg>
-        <span>Typeflake</span>
-      </a>
-      <nav class="nav" aria-label="Sections">
-        <a href="#graph">Option graph</a>
-        <a href="#mistakes">Mistakes</a>
-        <a href="#how">How it works</a>
-        <a href="#status">Status</a>
-        <a href="https://github.com/HaukeSchnau/typeflake">Source</a>
-      </nav>
-    </header>
+    <div class="sky">
+      <header class="top wrap">
+        <a class="brand" href="/" aria-label="Typeflake, home">
+          <svg class="mark" viewBox="0 0 32 32" width="26" height="26" aria-hidden="true">
+            <g fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+              <path id="arm" d="M16 16V3.6M16 9.2l-3.4-2M16 9.2l3.4-2" />
+              <use href="#arm" transform="rotate(60 16 16)" />
+              <use href="#arm" transform="rotate(120 16 16)" />
+              <use href="#arm" transform="rotate(180 16 16)" />
+              <use href="#arm" transform="rotate(240 16 16)" />
+              <use href="#arm" transform="rotate(300 16 16)" />
+            </g>
+          </svg>
+          <span>Typeflake</span>
+        </a>
+        <nav class="nav" aria-label="Sections">
+          <a href="#module">Modules</a>
+          <a href="#mistakes">Mistakes</a>
+          <a href="#how">How it works</a>
+          <a href="#start">Get started</a>
+          <a href="https://github.com/HaukeSchnau/typeflake">GitHub</a>
+        </nav>
+      </header>
+
+      <section class="hero wrap" aria-labelledby="hero-h">
+        <div class="hero-text">
+          <h1 id="hero-h">Nix modules in TypeScript, typed by your own flake.</h1>
+          <p class="lede">
+            Typeflake reads the options your NixOS, nix-darwin and Home Manager configurations have
+            and turns them into TypeScript types. You write modules against those types, and
+            Typeflake renders each one to a plain <code>.nix</code> file that builds with Nix alone.
+          </p>
+          <div class="install">
+            <code data-copy-source>pnpm add -D typeflake@next</code>
+            <button type="button" class="copy" data-copy>Copy</button>
+          </div>
+          <p class="hero-links">
+            <a href="https://github.com/HaukeSchnau/typeflake">Source on GitHub</a>
+            <span class="pill">Early alpha</span>
+          </p>
+        </div>
+
+        <figure class="flake" data-flake aria-labelledby="flake-caption">
+          <div class="flake-stage">
+            <canvas
+              data-flake-canvas
+              role="img"
+              aria-label="The example server's option tree, drawn as a six-armed snowflake"
+            ></canvas>
+          </div>
+          <div class="flake-side">
+            <figcaption id="flake-caption">
+              <!-- @flake-caption -->
+            </figcaption>
+            <div class="readout" aria-live="polite" data-readout>
+              <p class="readout-path" data-readout-path>
+                <span class="for-pointer">Point at a branch to read its option.</span
+                ><span class="for-touch">Touch a branch to read its option.</span>
+              </p>
+              <p class="readout-type" data-readout-type></p>
+            </div>
+            <div class="find">
+              <label for="find-input">Find an option</label>
+              <input
+                id="find-input"
+                type="search"
+                placeholder="nginx, stateVersion, openssh"
+                autocomplete="off"
+                spellcheck="false"
+                role="combobox"
+                aria-expanded="false"
+                aria-controls="find-results"
+                aria-autocomplete="list"
+                data-find
+              />
+              <ul
+                id="find-results"
+                class="find-results"
+                role="listbox"
+                data-find-results
+                hidden
+              ></ul>
+            </div>
+          </div>
+        </figure>
+      </section>
+    </div>
 
     <main id="main">
-      <section class="hero wrap" aria-labelledby="hero-h">
-        <h1 id="hero-h">Nix modules in TypeScript, typed by your own configurations.</h1>
-        <div class="hero-text">
-          <p class="lede">
-            Typeflake reads the option graph of your NixOS, nix-darwin and Home Manager
-            configurations with
-            <code>nix eval</code> and generates TypeScript types from it. You write modules in
-            Effect TypeScript against those types, and Typeflake renders each one to an ordinary
-            <code>.nix</code> file next to it. That file builds with Nix alone.
+      <section class="module wrap" id="module" aria-labelledby="module-h">
+        <div class="section-head">
+          <h2 id="module-h">A module in, plain Nix out</h2>
+          <p>
+            This module serves a blog with nginx and checks it for broken links every day. It
+            belongs to the example flake the whole page uses, a NixOS server and a Mac. Point at a
+            part of either file to find its counterpart.
           </p>
-          <div class="hero-side">
-            <p class="state-line">
-              <span class="state">Early alpha</span>
-              The probe, the type generator, module rendering and the CLI work. A first port of
-              infra's app-stores module builds the same <code>drvPath</code> as the original on
-              srv-2 and m1.
-            </p>
-            <p class="actions">
-              <a class="button" href="https://github.com/HaukeSchnau/typeflake">Source on GitHub</a>
-              <a href="https://github.com/HaukeSchnau/typeflake/blob/main/docs/DESIGN.md"
-                >Read the design notes</a
-              >
-            </p>
-          </div>
         </div>
-      </section>
-
-      <figure class="pair wrap" id="pair" data-pair>
-        <div class="pane">
-          <div class="pane-head">
-            <span class="file">app-stores/default.nix.ts</span>
-            <span class="tag tag-strong">What you write</span>
-          </div>
-          <!-- @hero-ts -->
-        </div>
-        <div class="pane">
-          <div class="pane-head">
-            <span class="file">app-stores/default.nix</span>
-            <span class="tag">What Typeflake renders next to it</span>
-          </div>
-          <!-- @hero-nix -->
-        </div>
-        <figcaption class="pair-notes" aria-live="polite">
-          <p data-note="" class="pair-hint">
-            infra's app-stores module, condensed as in the design notes. It typechecks against
-            srv-2's generated types, and the Nix is the renderer's own output.
-            <span class="for-pointer"
-              >Point at a highlighted part on either side to find its counterpart.</span
-            >
-            <span class="for-touch"
-              >Tap a highlighted part on either side to find its counterpart.</span
-            >
-          </p>
-          <p data-note="args" hidden>
-            Typeflake calls <code>config</code> once, with proxies for <code>config</code>,
-            <code>lib</code> and <code>pkgs</code>. Property access builds Nix syntax, and nothing
-            is evaluated in Node. The rendered function takes the arguments the body uses.
-          </p>
-          <p data-note="option" hidden>
-            <code>Options.enable</code> declares the option, like <code>lib.mkEnableOption</code>.
-            The types of a module's own options are inferred locally, so changing one needs no new
-            probe.
-          </p>
-          <p data-note="secrets" hidden>
-            <code>config.sops.secrets</code> has the type sops-nix's options give it. A TypeScript
-            variable holds an expression, so the Nix has the expression where the module used the
-            variable.
-          </p>
-          <p data-note="asc" hidden>
-            <code>pkgs.writeShellApplication</code> renders as the same call. <code>asc</code> holds
-            that call, so it lands where <code>asc</code> is used, in <code>systemPackages</code>.
-          </p>
-          <p data-note="text" hidden>
-            <code>nix`…`</code> dedents exactly like a Nix <code>''</code> string, so a script moves
-            between the two unchanged.
-          </p>
-          <p data-note="exe" hidden>
-            <code>path("./asc-package.nix")</code> is a Nix path literal, relative to the module's
-            file.
-          </p>
-          <p data-note="mkif" hidden>
-            TypeScript can't branch on a <code>Nix&lt;boolean&gt;</code>, so conditions go through
-            <code>mkIf</code> or <code>ifThenElse</code>. A typo inside <code>mkIf</code> fails like
-            one outside it.
-          </p>
-          <p data-note="secret" hidden>
-            <code>sops.secrets</code> is an attribute set of submodules. Each entry is typed with
-            sops-nix's secret options.
-          </p>
-          <p data-note="owner" hidden>
-            <code>identity.primaryUser</code> is an option infra declares itself. It is typed like
-            any option from nixpkgs.
-          </p>
-          <p data-note="mode" hidden>
-            sops-nix wants the mode as a string. Written as <code>mode: 400</code>, this line fails
-            with TS2322.
-          </p>
-          <p data-note="packages" hidden>
-            <code>systemPackages</code> is a list of packages. Adding the string
-            <code>"asc"</code> to it fails with TS2322.
-          </p>
-        </figcaption>
-      </figure>
-
-      <section class="graph" id="graph" aria-labelledby="graph-h">
-        <div class="wrap graph-intro">
-          <div class="graph-text">
-            <h2 id="graph-h">One host, 41,038 options</h2>
-            <div class="prose">
-              <p>
-                srv-2 is a NixOS server in infra, the repository Typeflake is first built for. Its
-                configuration has 41,038 options once Home Manager's are counted, and 35,962 of them
-                are visible in the manual. They come from nixpkgs, Home Manager, disko, sops-nix and
-                infra's own modules, at the versions
-                <code>flake.lock</code> pins.
-              </p>
-              <p>
-                Typeflake turns them into 5.9 MB of TypeScript, leaving out only the hidden ones. A
-                typo in an nginx location, a sops-nix mode written as a number or a Home Manager
-                state version that doesn't exist then fails in the editor, before Nix evaluates
-                anything.
-              </p>
+        <figure class="pair" data-pair>
+          <svg class="threads" data-threads aria-hidden="true"></svg>
+          <div class="pane">
+            <div class="pane-head">
+              <span class="file">modules/blog.nix.ts</span>
+              <span class="tag">What you write</span>
             </div>
+            <!-- @blog-ts -->
           </div>
-          <table class="measure">
-            <caption>
-              Measured on 2026-10-23 against infra, with TypeScript 7.0.2.
-            </caption>
-            <thead>
-              <tr>
-                <td></td>
-                <th scope="col">srv-2, NixOS</th>
-                <th scope="col">m1, nix-darwin</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <th scope="row">Probe</th>
-                <td>11 s, 940 MB</td>
-                <td>3.4 s, 445 MB</td>
-              </tr>
-              <tr>
-                <th scope="row">Options, Home Manager included</th>
-                <td>41,038 (35,962 visible)</td>
-                <td class="none">Not measured</td>
-              </tr>
-              <tr>
-                <th scope="row">Probe output</th>
-                <td>32 MB of JSON</td>
-                <td>11 MB of JSON</td>
-              </tr>
-              <tr>
-                <th scope="row">Generated types</th>
-                <td>5.9 MB, 6,400 interfaces</td>
-                <td>1.4 MB</td>
-              </tr>
-              <tr>
-                <th scope="row">Typecheck of a sample module</th>
-                <td>0.48 s, 59 MB</td>
-                <td class="none">Not measured</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-
-        <figure class="map-figure" aria-labelledby="map-caption">
-          <div class="wrap">
-            <ul class="legend" aria-label="Who declares the options">
-              <!-- @map-legend -->
-            </ul>
-          </div>
-          <div
-            class="map"
-            data-map
-            tabindex="0"
-            role="group"
-            aria-roledescription="treemap"
-            aria-label="srv-2's option namespaces, sized by option count"
-            aria-describedby="map-keys"
-          ></div>
-          <div class="wrap">
-            <div class="readout" data-readout aria-live="polite">
-              <p class="readout-path">Every block is a namespace in srv-2's option graph.</p>
-              <p class="readout-detail">
-                <span class="for-pointer">Point at one to read its path and size.</span>
-                <span class="for-touch">Tap one to read its path and size.</span>
-                <span id="map-keys"
-                  >With the map focused, the arrow keys step through the namespaces.</span
-                >
-              </p>
+          <div class="pane">
+            <div class="pane-head">
+              <span class="file">modules/blog.nix</span>
+              <span class="tag">What <code>typeflake render</code> writes</span>
             </div>
-            <figcaption id="map-caption">
-              Each block is a namespace, sized by its number of options and colored by the flake
-              input that declares most of them. The counts come from the probe output the generated
-              types were built from.
-            </figcaption>
-            <details class="map-table">
-              <summary>Show the counts as a table</summary>
-              <!-- @map-table -->
-            </details>
+            <!-- @blog-nix -->
           </div>
+          <figcaption class="notes" aria-live="polite">
+            <p data-note="">
+              <span class="for-pointer">Point at a highlighted part to read what it does.</span>
+              <span class="for-touch">Tap a highlighted part to read what it does.</span>
+            </p>
+            <p data-note="args" hidden>
+              Typeflake calls <code>config</code> once, with expressions for <code>config</code>,
+              <code>lib</code> and <code>pkgs</code>. Property access builds Nix, and nothing is
+              evaluated in Node. The rendered function takes the arguments the body uses.
+            </p>
+            <p data-note="option" hidden>
+              <code>Options.enable</code> and <code>Options.make</code> declare options like
+              <code>lib.mkEnableOption</code> and <code>lib.mkOption</code>. The module reads
+              <code>config.blog</code> with these types right away, before any probe.
+            </p>
+            <p data-note="site" hidden>
+              A variable holds an expression, not a value. <code>site</code> is the
+              <code>callPackage</code> call, and the Nix has that call where the module used it.
+            </p>
+            <p data-note="mkif" hidden>
+              TypeScript can't branch on a value Nix computes, so a condition is
+              <code>mkIf</code> or <code>ifThenElse</code>. A misspelled option inside
+              <code>mkIf</code> fails like one outside it.
+            </p>
+            <p data-note="vhost" hidden>
+              <code>virtualHosts</code> is an attribute set of submodules. Every entry is typed by
+              nginx's
+              <!-- @vhost-options -->
+              virtual host options.
+            </p>
+            <p data-note="domain" hidden>
+              The blog's own option, used inside one of nginx's. Writing
+              <code>config.blog.enable</code> here fails, because nginx wants a string.
+            </p>
+            <p data-note="ports" hidden>
+              <code>allowedTCPPorts</code> is a list of ports. A string in it fails with TS2322.
+            </p>
+            <p data-note="script" hidden>
+              <code>nix`…`</code> removes indentation exactly like a Nix <code>''</code> string, so
+              a script moves between the two unchanged.
+            </p>
+            <p data-note="exe" hidden>
+              <code>lib.getExe</code> takes a package and returns a string expression. Its signature
+              is typed like any function.
+            </p>
+          </figcaption>
         </figure>
       </section>
 
       <section class="mistakes wrap" id="mistakes" aria-labelledby="mistakes-h">
-        <div class="mistakes-intro">
-          <h2 id="mistakes-h">Ten mistakes that don't compile</h2>
-          <div class="prose">
-            <p>
-              These come from the spike that measured the generated types before modules existed: a
-              configuration passed to a function that takes <code>Shape&lt;NixosOptions&gt;</code>.
-              It sets sshd's freeform settings, nginx virtual hosts, sops-nix secrets, Home Manager
-              and options infra declares itself. Modules check against the same types.
-            </p>
-            <p>Pick a mistake to make it in the file and read what <code>tsc</code> reports.</p>
-          </div>
+        <div class="section-head">
+          <h2 id="mistakes-h">Mistakes fail in your editor</h2>
+          <p>
+            Nix finds these when it evaluates a configuration, often on the machine you deploy to.
+            With Typeflake, <code>tsc</code> finds them while you type. Pick one to make it in the
+            example.
+          </p>
         </div>
         <div class="mistakes-body">
-          <div class="mistake-pick">
-            <ul class="mistake-list" aria-label="Mistakes">
-              <!-- @mistake-list -->
-            </ul>
-            <button type="button" class="text-button" data-mistake-reset hidden>
-              Undo the mistake
-            </button>
-          </div>
-          <div class="mistake-work" data-mistake-work>
-            <div class="pane">
-              <div class="pane-head">
-                <span class="file">sample.ts</span>
-                <span class="tag"
-                  >Checked with
-                  <!-- @checked-with --></span
-                >
-              </div>
-              <div class="sample" data-sample><!-- @sample --></div>
+          <ul class="mistake-list" aria-label="Mistakes">
+            <!-- @mistake-list -->
+          </ul>
+          <div class="editor" data-editor>
+            <div class="editor-head">
+              <span class="file" data-editor-file><!-- @editor-file --></span>
+              <span class="tag"><!-- @checked-with --></span>
             </div>
-            <pre class="out" aria-live="polite"><span class="out-prompt">$ tsc --noEmit</span>
-<span data-out>No errors.</span></pre>
+            <div class="editor-code" data-editor-code><!-- @editor-code --></div>
+            <div class="problems" aria-live="polite" data-problems>
+              <p class="problems-none">No problems. Pick a mistake to make one.</p>
+            </div>
           </div>
         </div>
         <!-- @mistake-templates -->
-        <p class="note">
-          Each error above is what <code>tsc</code> printed for that exact file, checked against the
-          5.9 MB of types generated from srv-2. Identical interfaces are shared and named after the
-          first option path that has them, which is why nginx's locations carry agorakit's name.
-        </p>
       </section>
 
-      <section class="how wrap" id="how" aria-labelledby="how-h">
-        <h2 id="how-h">From option graph to plain Nix</h2>
-        <ol class="steps">
-          <li class="step">
-            <div class="step-text">
-              <h3>Probe the option graph</h3>
-              <p class="state state-works">Works today</p>
+      <section class="how" id="how" aria-labelledby="how-h">
+        <div class="wrap">
+          <div class="section-head">
+            <h2 id="how-h">How it works</h2>
+            <p>
+              Your flake stays the build. Typeflake writes <code>.nix</code> files and reads the
+              option tree back, so the types follow nixpkgs, Home Manager, nix-darwin and your own
+              options at the versions <code>flake.lock</code> pins.
+            </p>
+          </div>
+          <!-- @loop -->
+          <ol class="steps">
+            <li class="step">
+              <h3>Render the modules</h3>
               <p>
-                <code>src/probe.nix</code> walks a configuration's <code>options</code> with
-                builtins only and prints the tree as JSON. It reads the module system's type
-                metadata, such as nested types, enum values and submodule options, and never parses
-                descriptions. srv-2 takes 11 seconds.
+                Each <code>*.nix.ts</code> file renders to the <code>.nix</code> file next to it.
+                <code>flake.nix</code> imports those like any other module.
               </p>
-            </div>
-            <div class="step-code">
-              <div class="pane">
-                <div class="pane-head"><span class="tag">Shell</span></div>
-                <!-- @probe-sh -->
-              </div>
-              <div class="pane">
-                <div class="pane-head">
-                  <span class="file">srv-2.json</span>
-                  <span class="tag">One option, as the probe prints it</span>
-                </div>
-                <!-- @probe-json -->
-              </div>
-            </div>
-          </li>
-          <li class="step">
-            <div class="step-text">
-              <h3>Generate types</h3>
-              <p class="state state-works">Works today</p>
+              <!-- @step-render -->
+            </li>
+            <li class="step">
+              <h3>Probe the configurations</h3>
               <p>
-                <code>src/Typegen.ts</code> turns the tree into interfaces that describe evaluated
-                values. Groups and submodules become interfaces named after their first option path,
-                and identical ones are shared. An option's description becomes its JSDoc, so the
-                editor shows it on hover.
-                <code>typeflake types nixosConfigurations.srv-2</code> runs the probe and the
-                generator and writes the result into <code>.typeflake/</code>.
+                A Nix expression walks each configuration's options with builtins only, and
+                Typeflake turns them into declarations in <code>.typeflake/</code>.
+                <!-- @probe-numbers -->
               </p>
-            </div>
-            <div class="step-code">
-              <div class="pane">
-                <div class="pane-head">
-                  <span class="file">options.ts</span>
-                  <span class="tag">An excerpt of what the generator wrote</span>
-                </div>
-                <!-- @options-ts -->
-              </div>
-            </div>
-          </li>
-          <li class="step">
-            <div class="step-text">
-              <h3>Write a module</h3>
-              <p class="state state-works">Works today</p>
+              <!-- @step-types -->
+            </li>
+            <li class="step">
+              <h3>Check</h3>
               <p>
-                A module is a <code>*.nix.ts</code> file like the
-                <a href="#pair">one at the top</a>. Generated declarations augment a
-                <code>Register</code> interface, so <code>NixOS.module(…)</code> is typed without
-                annotations. The first port typechecks against srv-2's types in 0.77 seconds, and
-                four mistakes injected into it all fail.
+                With <code>.typeflake/*.ts</code> in your tsconfig, the editor completes every
+                option and shows its description on hover.
+                <!-- @check-numbers -->
               </p>
-            </div>
-          </li>
-          <li class="step">
-            <div class="step-text">
-              <h3>Render it to Nix</h3>
-              <p class="state state-works">Works today</p>
+              <!-- @step-check -->
+            </li>
+            <li class="step">
+              <h3>Build with Nix</h3>
               <p>
-                <code>typeflake render</code> writes each module's <code>.nix</code> file next to
-                it, and <code>--check</code> fails when one is out of date. Your
-                <code>flake.nix</code> imports the result like any other module. Delete the
-                <code>.ts</code> files and the repository still builds.
+                The rendered files are ordinary Nix. Delete the <code>.ts</code> files and the flake
+                still builds, with no Node and no Typeflake library.
               </p>
-            </div>
-          </li>
-          <li class="step">
-            <div class="step-text">
-              <h3>Check the port</h3>
-              <p class="state state-works">Done for app-stores</p>
-              <p>
-                A port must not change what any host builds. For app-stores, each host swapped the
-                module once for a copy of the original and once for the rendered port, and both
-                printed the same <code>drvPath</code>, on srv-2 and on m1.
-              </p>
-            </div>
-            <div class="step-code">
-              <div class="pane">
-                <div class="pane-head"><span class="tag">Shell</span></div>
-                <!-- @drv-path-sh -->
-              </div>
-            </div>
-          </li>
-        </ol>
+              <!-- @step-build -->
+            </li>
+          </ol>
+        </div>
       </section>
 
       <section class="rules wrap" aria-labelledby="rules-h">
-        <h2 id="rules-h">Rules it keeps</h2>
+        <h2 id="rules-h">What it promises</h2>
         <ul class="rule-list">
           <li>
             <h3>Nix stays the build</h3>
             <p>
-              Generated Nix builds with Nix alone, without Node, Bun or a Typeflake Nix library.
-              Typeflake is a way to write <code>.nix</code> files, not a runtime.
+              Generated Nix needs nothing but Nix. Typeflake is a way to write
+              <code>.nix</code> files, not a runtime.
             </p>
           </li>
           <li>
-            <h3>Types come from your configurations</h3>
+            <h3>Types come from your flake</h3>
             <p>
-              They are probed from the flake you already have. There is no hand-written schema to
-              fall behind nixpkgs.
+              They are probed from the configurations you already have, third-party modules and your
+              own options included. There is no hand-written schema to fall behind nixpkgs.
             </p>
           </li>
           <li>
             <h3>No <code>any</code></h3>
             <p>
-              Every Nix expression has the type of the value it evaluates to,
-              <code>Nix&lt;T&gt;</code>. Option types Typeflake can't map yet stay visible as
-              <code>Unsupported&lt;"name"&gt;</code>. About 240 option positions do today, across 25
-              custom types, and 152 of them are nixpkgs' <code>systemd option</code>.
+              Every expression has the type of the value it evaluates to,
+              <code>Nix&lt;T&gt;</code>. An option type Typeflake can't map yet stays visible as
+              <code>Unsupported&lt;"name"&gt;</code>.
             </p>
           </li>
           <li>
             <h3>A port changes nothing</h3>
             <p>
-              Porting a module leaves every host's <code>system.build.toplevel.drvPath</code> as it
-              was. That is the test for every port.
+              Moving a module to TypeScript leaves every host's
+              <code>system.build.toplevel.drvPath</code> as it was. Compare the two before you
+              commit.
             </p>
           </li>
         </ul>
       </section>
 
-      <section class="status wrap" id="status" aria-labelledby="status-h">
-        <h2 id="status-h">Where it stands</h2>
-        <div class="status-grid">
-          <div>
-            <h3>Works today</h3>
-            <ul class="plain-list">
-              <li>
-                The option probe on NixOS and nix-darwin hosts, with Home Manager's options from the
-                same NixOS probe.
-              </li>
-              <li>The type generator, and <code>typeflake types</code> to run both for a host.</li>
-              <li>
-                Modules: <code>NixOS.module</code>, <code>Options</code>, <code>nix`…`</code>,
-                <code>mkIf</code> and the proxies for <code>config</code>, <code>lib</code> and
-                <code>pkgs</code>.
-              </li>
-              <li><code>typeflake render</code>, with <code>--check</code> for drift.</li>
-              <li>
-                A first port of infra's app-stores module, with an unchanged <code>drvPath</code>.
-              </li>
-            </ul>
-          </div>
-          <div>
-            <h3>Next</h3>
-            <ol class="next-list">
-              <li>
-                Probe again when <code>flake.lock</code> changes, and generate package names with
-                the probe.
-              </li>
-              <li>
-                Port a module with submodule options, and one shared between NixOS and nix-darwin,
-                through the CLI into infra.
-              </li>
-              <li>Later, <code>flake.ts</code>, typed flake inputs and nested package sets.</li>
-            </ol>
-          </div>
-        </div>
-        <div class="install">
-          <div class="pane">
-            <div class="pane-head">
-              <span class="tag">Shell</span><span class="tag tag-strong">Early alpha</span>
-            </div>
-            <!-- @install-sh -->
-          </div>
+      <section class="start wrap" id="start" aria-labelledby="start-h">
+        <div class="start-guide">
+          <h2 id="start-h">Get started</h2>
           <p>
-            Early alpha releases of this rebuild go to npm from 0.1.0 on, and
-            <code>typeflake</code> is the CLI they install. The 0.0.1 versions there are from an
-            earlier prototype.
+            Typeflake needs Node 24 or newer, Nix with flakes, and a flake with NixOS, nix-darwin or
+            Home Manager configurations. Start with one module.
           </p>
+          <!-- @start-sh -->
+          <p>
+            Then add the generated declarations to <code>tsconfig.json</code>, and run
+            <code>typeflake render --check</code> in CI so the <code>.nix</code> files never fall
+            behind their modules.
+          </p>
+          <!-- @start-tsconfig -->
+        </div>
+        <div class="start-status">
+          <h2>Where it stands</h2>
+          <p>Early alpha. The pieces work end to end, and the API will still change before 1.0.</p>
+          <h3>Works today</h3>
+          <ul class="plain-list">
+            <li>
+              Probing NixOS and nix-darwin configurations, with Home Manager's options through the
+              NixOS one. The largest configuration tried so far has 41,038 options and takes 11
+              seconds.
+            </li>
+            <li>
+              <code>typeflake types</code> for options and package names, and
+              <code>typeflake render</code>, with <code>--check</code> for CI.
+            </li>
+            <li>
+              <code>NixOS.module</code>, <code>Darwin.module</code>,
+              <code>HomeManager.module</code>, <code>define</code>, <code>mkIf</code> and the other
+              overrides, <code>Options</code>, <code>nix`…`</code> and typed <code>lib</code>
+              helpers.
+            </li>
+            <li>
+              A module ported from a production flake builds the same <code>drvPath</code> as the
+              original on NixOS and nix-darwin.
+            </li>
+          </ul>
+          <h3>Next</h3>
+          <ul class="plain-list">
+            <li>Probe again by itself when <code>flake.lock</code> changes.</li>
+            <li>
+              Types for more of <code>lib</code> and for package sets like
+              <code>python3Packages</code>.
+            </li>
+            <li>Modules shared between NixOS and nix-darwin.</li>
+          </ul>
         </div>
       </section>
     </main>
 
-    <footer class="foot wrap">
-      <p>Typeflake is MIT licensed and written by Hauke Schnau.</p>
-      <p class="foot-links">
-        <a href="https://github.com/HaukeSchnau/typeflake">Source on GitHub</a>
-        <a href="https://github.com/HaukeSchnau/typeflake/blob/main/docs/DESIGN.md">Design notes</a>
-      </p>
+    <footer class="foot">
+      <div class="wrap foot-inner">
+        <p>Typeflake is MIT licensed, by Hauke Schnau.</p>
+        <p class="foot-links">
+          <a href="https://github.com/HaukeSchnau/typeflake">GitHub</a>
+          <a href="https://www.npmjs.com/package/typeflake">npm</a>
+          <a href="https://github.com/HaukeSchnau/typeflake/blob/main/docs/DESIGN.md"
+            >Design notes</a
+          >
+        </p>
+      </div>
     </footer>
   </body>
 </html>
