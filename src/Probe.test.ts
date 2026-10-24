@@ -43,7 +43,8 @@ const probe = (module: string) => {
   return Effect.runSync(decodeOptionTree(json));
 };
 
-describe("probe.nix", () => {
+// The first evaluation fetches the locked nixpkgs when the store lacks it, as on a fresh CI worker.
+describe("probe.nix", { timeout: 120_000 }, () => {
   it("records an option that throws as unknown and keeps its siblings", () => {
     const tree = probe(`{ lib, ... }: {
       options.fine = lib.mkOption { type = lib.types.bool; };
