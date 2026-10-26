@@ -190,9 +190,12 @@ against the 7.0 MB of declarations in 2.6 s. `site/scripts/example.ts` measures 
 
 ## Next
 
-1. The CLI renders every `*.nix.ts` module (`typeflake render`, `--check` for drift) and probes
-   configurations into `.typeflake/` (`typeflake types nixosConfigurations.srv-2`), options and
-   package names. Next: re-probe when the lock changes.
-2. Port a module with submodule options and one shared between NixOS and darwin, through the CLI,
+[VISION.md](VISION.md) has the plan and what of it is done: type providers (packages, binaries,
+secrets, imported `.nix` files, renamed options) and `typeflake bump` are in. [FLEET.md](FLEET.md)
+designs the fleet graph, from the cross-host wiring infra has today.
+
+1. Port a module with submodule options and one shared between NixOS and darwin, through the CLI,
    into infra.
+2. The fleet graph's first step: hosts, endpoints and `fleet.lock`, with observability as the first
+   wiring case.
 3. Later: `flake.ts`, typed flake inputs, nested package sets.

@@ -6,6 +6,7 @@ import type { Data, Definition, OptionsOf, Override } from "./Definition.ts";
 import type { Register } from "./index.ts";
 import type { Lib, Pkgs } from "./Lib.ts";
 import * as Nix from "./Nix.ts";
+import type { ModuleFile } from "./NixFile.ts";
 import type { Declarations, Infer } from "./Options.ts";
 
 export const TypeId: unique symbol = Symbol.for("typeflake/Module");
@@ -36,6 +37,8 @@ export interface Definitions<
   D extends Declarations,
   Eff extends Effect.Effect<unknown, unknown, unknown>,
 > {
+  /** Modules written in Nix, imported with `import legacy from "./legacy.nix"`. */
+  readonly imports?: ReadonlyArray<ModuleFile>;
   /** The options the module declares. `config` reads them before a probe does, and only they decide `D`. */
   readonly options?: D;
   /**
@@ -113,13 +116,13 @@ export const make =
             made(args as Args<OptionsOf<Class> & Infer<D>>)
           : made;
       const config = Nix.toExpr(isGenerator(result) ? yield* Effect.gen(() => result) : result);
+      const { imports = [], options } = definitions;
       const body =
-        definitions.options === undefined && config._tag === "Attrs"
+        imports.length === 0 && options === undefined && config._tag === "Attrs"
           ? config
           : Ast.attrs([
-              ...(definitions.options === undefined
-                ? []
-                : [["options", Nix.toExpr(definitions.options)] as const]),
+              ...(imports.length === 0 ? [] : [["imports", Nix.toExpr(imports)] as const]),
+              ...(options === undefined ? [] : [["options", Nix.toExpr(options)] as const]),
               ["config", config],
             ]);
       return Ast.print(Ast.lambda([...Ast.freeVariables(body)].toSorted(byConvention), body));

@@ -1,4 +1,5 @@
-import { mkIf, nix, NixOS, Options, path, Types } from "typeflake";
+import { exe, mkIf, nix, NixOS, Options, Types } from "typeflake";
+import site from "./site.nix";
 
 export default NixOS.module({
   options: {
@@ -10,9 +11,8 @@ export default NixOS.module({
       }),
     },
   },
-  config: ({ config, lib, pkgs }) => {
-    const site = pkgs.callPackage(path("./site.nix"), {});
-    return mkIf(config.blog.enable, {
+  config: ({ config, pkgs }) =>
+    mkIf(config.blog.enable, {
       services: {
         nginx: {
           enable: true,
@@ -22,7 +22,7 @@ export default NixOS.module({
               serverName: config.blog.domain,
               forceSSL: true,
               enableACME: true,
-              root: site,
+              root: pkgs.callPackage(site, {}),
             },
           },
         },
@@ -40,11 +40,10 @@ export default NixOS.module({
             description: "Check the blog for broken links",
             startAt: "daily",
             script: nix`
-              ${lib.getExe(pkgs.lychee)} https://${config.blog.domain}
+              ${exe(pkgs.lychee, "lychee")} https://${config.blog.domain}
             `,
           },
         },
       },
-    });
-  },
+    }),
 });

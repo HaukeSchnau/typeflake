@@ -145,9 +145,9 @@
               <span class="for-touch">Tap a highlighted part to read what it does.</span>
             </p>
             <p data-note="args" hidden>
-              Typeflake calls <code>config</code> once, with expressions for <code>config</code>,
-              <code>lib</code> and <code>pkgs</code>. Property access builds Nix, and nothing is
-              evaluated in Node. The rendered function takes the arguments the body uses.
+              Typeflake calls <code>config</code> once, with expressions for the module's arguments.
+              Property access builds Nix, and nothing is evaluated in Node. The rendered function
+              takes the arguments the body uses, <code>lib</code> included for <code>exe</code>.
             </p>
             <p data-note="option" hidden>
               <code>Options.enable</code> and <code>Options.make</code> declare options like
@@ -155,8 +155,9 @@
               <code>config.blog</code> with these types right away, before any probe.
             </p>
             <p data-note="site" hidden>
-              A variable holds an expression, not a value. <code>site</code> is the
-              <code>callPackage</code> call, and the Nix has that call where the module used it.
+              A module imports the Nix files it uses. <code>typeflake types</code> reads
+              <code>site.nix</code>'s arguments, so <code>callPackage</code> rejects one it doesn't
+              take, and the Nix gets the path literal.
             </p>
             <p data-note="mkif" hidden>
               TypeScript can't branch on a value Nix computes, so a condition is
@@ -181,8 +182,9 @@
               a script moves between the two unchanged.
             </p>
             <p data-note="exe" hidden>
-              <code>lib.getExe</code> takes a package and returns a string expression. Its signature
-              is typed like any function.
+              <code>exe</code> is <code>lib.getExe'</code>. <code>typeflake types</code> lists the
+              programs in the packages a project uses, from the binary cache, so a program
+              <code>lychee</code> doesn't ship fails.
             </p>
           </figcaption>
         </figure>

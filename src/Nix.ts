@@ -11,8 +11,9 @@ export interface Nix<out A> {
 
 /** What option values are made of, besides expressions: nothing builds them in TypeScript. */
 declare const PackageBrand: unique symbol;
-export interface Package {
-  readonly [PackageBrand]: "Package";
+/** A derivation. `Name` is its attribute in `pkgs`, where the probe found it there. */
+export interface Package<out Name extends string = string> {
+  readonly [PackageBrand]: { readonly name: Name };
 }
 export interface NixFunction {
   readonly _tag: "NixFunction";

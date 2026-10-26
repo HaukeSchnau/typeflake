@@ -136,6 +136,7 @@ let
       default = text (opt.defaultText or null);
       readOnly = opt.readOnly or false;
       internal = opt.internal or false;
+      deprecated = if visible == false then null else opt.type.deprecationMessage or null;
     };
 
   typeOf =

@@ -28,7 +28,7 @@
       description = "Check the blog for broken links";
       startAt = "daily";
       script = ''
-        ${lib.getExe pkgs.lychee} https://${config.blog.domain}
+        ${lib.getExe' pkgs.lychee "lychee"} https://${config.blog.domain}
       '';
     };
   };

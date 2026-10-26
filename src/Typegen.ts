@@ -5,15 +5,18 @@ export interface GenerateOptions {
   readonly rootClass: string;
   /** Where the generated file imports Typeflake's own types from. */
   readonly importFrom: string;
-  /** The top-level names in the configuration's `pkgs`, which `Pkgs` then types. */
-  readonly packages?: ReadonlyArray<string>;
-  /** What another generated file already registers: module classes, and `pkgs`. */
+  /** Module classes another generated file already registers. */
   readonly registered?: ReadonlySet<string>;
+  /**
+   * Attribute-set options whose attribute names a provider knows, by option path from the
+   * configuration's root: the TypeScript type of the names, such as `Register["sopsSecrets"]`.
+   */
+  readonly names?: ReadonlyMap<string, string>;
 }
 
 export interface Generated {
   readonly source: string;
-  /** The module classes this file registers, and `pkgs` if it does. */
+  /** The module classes this file registers. */
   readonly registered: ReadonlyArray<string>;
 }
 
@@ -52,8 +55,14 @@ export const generate = (tree: OptionTree, options: GenerateOptions): Generated 
     body.length > 80 ? hoist("type", [...path, "value"], body) : body;
 
   // A freeform submodule accepts any other attribute as `freeform`. TypeScript requires every field to
-  // fit the index signature, so it also admits the fields' own types.
-  const objectBody = (tree: OptionTree, path: ReadonlyArray<string>, freeform?: string): string => {
+  // fit the index signature, so it also admits the fields' own types. `scope` is the tree of the
+  // submodule or configuration the fields belong to, where renamed options find their new path.
+  const objectBody = (
+    tree: OptionTree,
+    path: ReadonlyArray<string>,
+    scope: OptionTree,
+    freeform?: string,
+  ): string => {
     const fields = Object.entries(tree)
       .toSorted(([left], [right]) => (left < right ? -1 : 1))
       .flatMap(([key, node]) => {
@@ -62,12 +71,29 @@ export const generate = (tree: OptionTree, options: GenerateOptions): Generated 
             {
               key,
               docs: "",
-              type: hoist("interface", [...path, key], objectBody(node.group, [...path, key])),
+              type: hoist(
+                "interface",
+                [...path, key],
+                objectBody(node.group, [...path, key], scope),
+              ),
             },
           ];
         }
-        if (node.visible === false) return [];
-        return [{ key, docs: doc(node), type: optionType(node, [...path, key]) }];
+        if (node.visible !== false) {
+          return [{ key, docs: doc(node), type: optionType(node, [...path, key]) }];
+        }
+        // nixpkgs keeps a renamed option as a hidden alias of the new one, which the editor shows
+        // struck through.
+        const renamed = renamedTo(node);
+        const target = renamed === undefined ? undefined : find(scope, renamed);
+        if (renamed === undefined || target === undefined) return [];
+        return [
+          {
+            key,
+            docs: `/**\n * @deprecated Renamed to \`${renamed.join(".")}\`.\n */\n`,
+            type: optionType(target, [...path, key]),
+          },
+        ];
       });
     const lines = fields.map(
       (field) => `${field.docs}readonly ${property(field.key)}: ${field.type}`,
@@ -153,8 +179,12 @@ export const generate = (tree: OptionTree, options: GenerateOptions): Generated 
         return composite(path, `ReadonlyArray<${inner("elemType")}>`);
       case "attrsOf":
       case "lazyAttrsOf":
-      case "attrsWith":
-        return composite(path, `{ readonly [name: string]: ${inner("elemType")} }`);
+      case "attrsWith": {
+        const known = options.names?.get(path.join("."));
+        return known === undefined
+          ? composite(path, `{ readonly [name: string]: ${inner("elemType")} }`)
+          : `{ readonly [K in ${known}]?: ${inner("elemType")} }`;
+      }
       case "oneOf":
         return composite(
           path,
@@ -195,11 +225,15 @@ export const generate = (tree: OptionTree, options: GenerateOptions): Generated 
           const name = reserve(`${pascal([type.class])}Options`);
           classes.set(type.class, name);
           declarations.push(
-            `export interface ${name} ${objectBody(type.options ?? {}, [type.class], freeform)}`,
+            `export interface ${name} ${objectBody(type.options ?? {}, [type.class], type.options ?? {}, freeform)}`,
           );
           return name;
         }
-        return hoist("interface", path, objectBody(type.options ?? {}, path, freeform));
+        return hoist(
+          "interface",
+          path,
+          objectBody(type.options ?? {}, path, type.options ?? {}, freeform),
+        );
       }
       default:
         return `Unsupported<${JSON.stringify(type.name)}>`;
@@ -208,40 +242,58 @@ export const generate = (tree: OptionTree, options: GenerateOptions): Generated 
 
   const root = reserve(`${pascal([options.rootClass])}Options`);
   classes.set(options.rootClass, root);
-  declarations.unshift(`export interface ${root} ${objectBody(tree, [])}`);
-
-  const packages = options.registered?.has("pkgs") === true ? [] : (options.packages ?? []);
-  if (packages.length > 0) {
-    const name = reserve("Packages");
-    classes.set("pkgs", name);
-    declarations.push(
-      `export interface ${name} {\n${packages.map((pkg) => `  readonly ${property(pkg)}: Package`).join("\n")}\n}`,
-    );
-  }
+  declarations.unshift(`export interface ${root} ${objectBody(tree, [], tree)}`);
 
   const registering = [...classes].filter(([moduleClass]) => !options.registered?.has(moduleClass));
-  const register = registering.map(
-    ([moduleClass, name]) => `    readonly ${property(moduleClass)}: ${name}`,
-  );
-  const body = declarations.join("\n\n");
-  // A project may check generated files with `noUnusedLocals`, so they import only what they use.
-  const imports = ["NixFunction", "NixPath", "NixValue", "Package", "Unsupported"].filter((name) =>
-    new RegExp(`\\b${name}\\b`).test(body),
-  );
-  const source = [
-    "// Generated by Typeflake from a probed option tree. Do not edit.",
-    `import type { ${imports.join(", ")} } from ${JSON.stringify(options.importFrom)}`,
+  return {
+    source: declarationFile({
+      origin: "a probed option tree",
+      declarations,
+      register: registering,
+      importFrom: options.importFrom,
+    }),
+    registered: registering.map(([moduleClass]) => moduleClass),
+  };
+};
+
+export interface DeclarationFile {
+  /** What the file was generated from, for its header. */
+  readonly origin: string;
+  readonly declarations: ReadonlyArray<string>;
+  /** `Register` fields: the key and its type. */
+  readonly register: ReadonlyArray<readonly [string, string]>;
+  readonly importFrom: string;
+}
+
+/** A generated file: its declarations, and the fields it adds to `Register`. */
+export const declarationFile = (file: DeclarationFile): string => {
+  const body = file.declarations.join("\n\n");
+  // A project may check generated files with `noUnusedLocals`, so they import only what the types
+  // use; option descriptions may mention the same words.
+  const code = body.replaceAll(/\/\*\*[\s\S]*?\*\//g, "");
+  const imports = [
+    "NixFunction",
+    "NixPath",
+    "NixValue",
+    "Package",
+    "Register",
+    "Unsupported",
+  ].filter((name) => new RegExp(`\\b${name}\\b`).test(code));
+  return [
+    `// Generated by Typeflake from ${file.origin}. Do not edit.`,
+    ...(imports.length === 0
+      ? []
+      : [`import type { ${imports.join(", ")} } from ${JSON.stringify(file.importFrom)}`]),
     "",
     body,
     "",
-    `declare module ${JSON.stringify(options.importFrom)} {`,
+    `declare module ${JSON.stringify(file.importFrom)} {`,
     "  interface Register {",
-    ...register,
+    ...file.register.map(([key, type]) => `    readonly ${property(key)}: ${type}`),
     "  }",
     "}",
     "",
   ].join("\n");
-  return { source, registered: registering.map(([moduleClass]) => moduleClass) };
 };
 
 const referencedOptions = (tree: OptionTree): ReadonlySet<string> => {
@@ -260,10 +312,36 @@ const referencedOptions = (tree: OptionTree): ReadonlySet<string> => {
   return ids;
 };
 
+/** The path a renamed option's alias points at, from its description `Alias of {option}\`a.b\`.` */
+const renamedTo = (option: NixOption): ReadonlyArray<string> | undefined => {
+  const match = /^Alias of \{option\}`(.+)`\.$/.exec(option.description?.trim() ?? "");
+  return match?.[1] === undefined ? undefined : optionPath(match[1]);
+};
+
+/** `lib.showOption`'s output read back: dots separate names, and quotes hold names with dots. */
+const optionPath = (shown: string): ReadonlyArray<string> =>
+  [...shown.matchAll(/"((?:[^"\\]|\\.)*)"|([^.]+)/g)].map(
+    ([, quoted, plain]) => quoted?.replaceAll(/\\(.)/g, "$1") ?? plain ?? "",
+  );
+
+/** The option at `path` in `tree`, through its groups and into submodule options such as `settings`. */
+const find = (tree: OptionTree, path: ReadonlyArray<string>): NixOption | undefined => {
+  const [head, ...rest] = path;
+  const node = head === undefined ? undefined : tree[head];
+  if (node === undefined) return undefined;
+  if (isGroup(node)) return rest.length === 0 ? undefined : find(node.group, rest);
+  if (node.visible === false) return undefined;
+  if (rest.length === 0) return node;
+  return node.type.options === undefined ? undefined : find(node.type.options, rest);
+};
+
 const doc = (option: NixOption): string => {
   const lines = [
     ...(option.description?.trim().split("\n") ?? []),
     ...(option.default === null ? [] : [`@default ${option.default.replaceAll("\n", " ")}`]),
+    ...(option.deprecated === undefined || option.deprecated === null
+      ? []
+      : [`@deprecated ${option.deprecated.replaceAll("\n", " ")}`]),
   ];
   if (lines.length === 0) return "";
   return `/**\n${lines.map((line) => ` * ${line.replaceAll("*/", "*\\/")}`.trimEnd()).join("\n")}\n */\n`;
@@ -275,7 +353,7 @@ const indent = (text: string): string =>
     .map((line) => `  ${line}`)
     .join("\n");
 
-const property = (key: string): string =>
+export const property = (key: string): string =>
   /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(key) ? key : JSON.stringify(key);
 
 const pascal = (path: ReadonlyArray<string>): string => {
@@ -287,4 +365,26 @@ const pascal = (path: ReadonlyArray<string>): string => {
     )
     .join("");
   return /^[0-9]/.test(name) ? `_${name}` : name || "Root";
+};
+
+export interface Rename {
+  readonly from: ReadonlyArray<string>;
+  readonly to: ReadonlyArray<string>;
+}
+
+/** The renamed options of a configuration, outside submodules, whose new option exists. */
+export const renames = (tree: OptionTree): ReadonlyArray<Rename> => {
+  const found: Array<Rename> = [];
+  const visit = (node: OptionTree, path: ReadonlyArray<string>): void => {
+    for (const [key, child] of Object.entries(node)) {
+      if (isGroup(child)) visit(child.group, [...path, key]);
+      else if (child.visible === false) {
+        const to = renamedTo(child);
+        if (to !== undefined && find(tree, to) !== undefined)
+          found.push({ from: [...path, key], to });
+      }
+    }
+  };
+  visit(tree, []);
+  return found;
 };

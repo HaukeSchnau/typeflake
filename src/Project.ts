@@ -10,15 +10,24 @@ import * as Schema from "effect/Schema";
 import * as Stream from "effect/Stream";
 import { isModule, type Module } from "./Module.ts";
 import { decodeProbed } from "./Probe.ts";
-import { generate } from "./Typegen.ts";
+import * as Provider from "./Provider.ts";
+import * as Binaries from "./providers/Binaries.ts";
+import * as Files from "./providers/Files.ts";
+import * as Packages from "./providers/Packages.ts";
+import * as Secrets from "./providers/Secrets.ts";
+import { declarationFile, generate, renames } from "./Typegen.ts";
 
 export class ImportFailed extends Schema.TaggedError<
   ImportFailed,
   { readonly brand: unique symbol }
 >()("ImportFailed", {
   file: Schema.String,
-  message: Schema.String,
-}) {}
+  reason: Schema.String,
+}) {
+  override get message() {
+    return `${this.file} can't be imported: ${this.reason}`;
+  }
+}
 
 /** A module's own effects failed while it rendered. */
 export class RenderFailed extends Schema.TaggedError<
@@ -90,7 +99,7 @@ export const render = (root: string, file: string) =>
     const url = yield* path.toFileUrl(path.resolve(root, file));
     const imported: unknown = yield* Effect.tryPromise({
       try: () => import(url.href),
-      catch: (cause) => ImportFailed.make({ file, message: String(cause) }),
+      catch: (cause) => ImportFailed.make({ file, reason: String(cause) }),
     });
     const module: unknown = Predicate.hasProperty(imported, "default")
       ? imported.default
@@ -152,8 +161,21 @@ const probeFile = fileURLToPath(new URL("../src/probe.nix", import.meta.url));
 const text = (stream: Stream.Stream<Uint8Array, PlatformError.PlatformError>) =>
   stream.pipe(Stream.decodeText(), Stream.mkString);
 
-/** `<flake>#<configuration>`'s options as `probe.nix` makes them, and the names in its `pkgs`, as JSON. */
-export const probe = (flake: string, configuration: string) =>
+export interface ProbeOptions {
+  /** A `flake.lock` to evaluate with instead of the flake's own, such as the one an update would write. */
+  readonly lockFile?: string;
+}
+
+/**
+ * `<flake>#<configuration>`'s options as `probe.nix` makes them, and what each provider found there,
+ * as JSON, from one evaluation.
+ */
+export const probe = (
+  flake: string,
+  configuration: string,
+  providers: ReadonlyArray<readonly [string, string]>,
+  options: ProbeOptions = {},
+) =>
   Effect.scoped(
     Effect.gen(function* () {
       const spawner = yield* ChildProcessSpawner.ChildProcessSpawner;
@@ -162,19 +184,20 @@ export const probe = (flake: string, configuration: string) =>
           "eval",
           "--impure",
           "--json",
+          ...(options.lockFile === undefined
+            ? []
+            : ["--reference-lock-file", options.lockFile, "--no-write-lock-file"]),
           `${flake}#${configuration}`,
           "--apply",
           `configuration: {
             options = import ${JSON.stringify(probeFile)} { class = ${JSON.stringify(classOf(configuration))}; } configuration.options;
-            packages = builtins.attrNames (configuration.pkgs or { });
+            providers = ${Provider.probeExpression(providers)};
           }`,
         ]),
       );
       const [stdout, stderr, exitCode] = yield* Effect.all(
         [text(handle.stdout), text(handle.stderr), handle.exitCode],
-        {
-          concurrency: "unbounded",
-        },
+        { concurrency: "unbounded" },
       );
       if (exitCode !== 0)
         return yield* ProbeFailed.make({ configuration, exitCode, stderr: stderr.slice(-4000) });
@@ -182,27 +205,97 @@ export const probe = (flake: string, configuration: string) =>
     }),
   );
 
+/** What `typeflake types` reads beyond the option graph. */
+export const providers: ReadonlyArray<Provider.Provider> = [
+  Packages.provider,
+  Binaries.provider,
+  Secrets.provider,
+  Files.provider,
+];
+
+/** The project's `.nix` files, relative to `root`. */
+export const nixFiles = (root: string) =>
+  Effect.gen(function* () {
+    const fs = yield* FileSystem.FileSystem;
+    const entries = yield* fs.readDirectory(root, { recursive: true });
+    return entries.filter((entry) => entry.endsWith(".nix") && !skipped.test(entry)).toSorted();
+  });
+
+export interface TypesOptions extends ProbeOptions {
+  /** Where the declarations go, relative to the root. */
+  readonly outDir?: string;
+}
+
 /**
- * Probes each configuration and writes its types to `.typeflake/<configuration>.ts`. A module class
- * registers with the first configuration that has it, since `Register` holds one type per class.
+ * Probes each configuration and writes `.typeflake/<configuration>.ts` with its option types, and
+ * `.typeflake/providers.ts` and `.typeflake/files/` with what the providers found in all of them. A
+ * module class registers with the first configuration that has it, since `Register` holds one type
+ * per class.
  */
-export const types = (root: string, flake: string, configurations: ReadonlyArray<string>) =>
+export const types = (
+  root: string,
+  flake: string,
+  configurations: ReadonlyArray<string>,
+  options: TypesOptions = {},
+) =>
   Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem;
     const path = yield* Path.Path;
-    const directory = path.resolve(root, ".typeflake");
+    const context: Provider.Context = {
+      root: path.resolve(root),
+      nixFiles: yield* nixFiles(root),
+      modules: yield* moduleFiles(root),
+    };
+    const expressions = yield* Effect.forEach(providers, (provider) =>
+      Effect.map(provider.nix(context), (nix) => [provider.name, nix] as const),
+    );
+    const probed = yield* Effect.forEach(configurations, (configuration) =>
+      Effect.flatMap(probe(flake, configuration, expressions, options), decodeProbed),
+    );
+    const provided = yield* Effect.forEach(providers, (provider) =>
+      provider.provide(
+        probed.flatMap(({ providers: found }) => {
+          const json = found[provider.name];
+          return json === undefined || json === null ? [] : [json];
+        }),
+        context,
+      ),
+    );
+
+    const directory = path.resolve(root, options.outDir ?? ".typeflake");
+    yield* fs.remove(path.join(directory, "files"), { recursive: true }).pipe(Effect.ignore);
     yield* fs.makeDirectory(directory, { recursive: true });
+    const names = new Map(provided.flatMap((found) => found.names));
     let registered: ReadonlySet<string> = new Set();
-    for (const configuration of configurations) {
-      const { options, packages } = yield* decodeProbed(yield* probe(flake, configuration));
-      const generated = generate(options, {
-        packages,
+    for (const [index, configuration] of configurations.entries()) {
+      const tree = probed[index]?.options ?? {};
+      const generated = generate(tree, {
         rootClass: classOf(configuration),
         importFrom: "typeflake",
         registered,
+        names,
       });
       registered = new Set([...registered, ...generated.registered]);
       yield* fs.writeFileString(path.join(directory, `${configuration}.ts`), generated.source);
     }
-    return [...registered];
+    yield* fs.writeFileString(
+      path.join(directory, "providers.ts"),
+      declarationFile({
+        origin: "what its providers found",
+        declarations: provided.flatMap((found) => found.declarations),
+        register: provided.flatMap((found) => found.register),
+        importFrom: "typeflake",
+      }),
+    );
+    for (const [file, source] of provided.flatMap((found) => found.files)) {
+      yield* fs.makeDirectory(path.dirname(path.join(directory, file)), { recursive: true });
+      yield* fs.writeFileString(path.join(directory, file), source);
+    }
+    return {
+      registered: [
+        ...registered,
+        ...provided.flatMap((found) => found.register.map(([key]) => key)),
+      ],
+      renames: probed.flatMap(({ options: tree }) => renames(tree)),
+    };
   });

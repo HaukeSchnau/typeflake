@@ -6,7 +6,8 @@ has, and render them to plain `.nix` files that build with Nix alone.
 **Website:** https://typeflake.schnau.dev
 
 ```ts
-import { mkIf, nix, NixOS, Options, path, Types } from "typeflake";
+import { exe, mkIf, nix, NixOS, Options, Types } from "typeflake";
+import site from "./site.nix";
 
 export default NixOS.module({
   options: {
@@ -15,7 +16,7 @@ export default NixOS.module({
       domain: Options.make({ type: Types.str, description: "Where the blog answers." }),
     },
   },
-  config: ({ config, lib, pkgs }) =>
+  config: ({ config, pkgs }) =>
     mkIf(config.blog.enable, {
       services: {
         nginx: {
@@ -25,7 +26,7 @@ export default NixOS.module({
               serverName: config.blog.domain,
               forceSSL: true,
               enableACME: true,
-              root: pkgs.callPackage(path("./site.nix"), {}),
+              root: pkgs.callPackage(site, {}),
             },
           },
         },
@@ -35,7 +36,7 @@ export default NixOS.module({
           "blog-links": {
             startAt: "daily",
             script: nix`
-              ${lib.getExe(pkgs.lychee)} https://${config.blog.domain}
+              ${exe(pkgs.lychee, "lychee")} https://${config.blog.domain}
             `,
           },
         },
@@ -49,6 +50,16 @@ export default NixOS.module({
 misspelled option, a string where nginx wants a port, or a package nixpkgs doesn't have fails in the
 editor. The same goes for Home Manager, nix-darwin, third-party modules and your own options, at the
 versions `flake.lock` pins.
+
+The probe types more than options:
+
+- `site.nix` is imported like a TypeScript module. Its declaration lists the arguments the file
+  takes, so `callPackage` rejects one it doesn't.
+- `exe(pkgs.lychee, "lychie")` fails: `typeflake types` lists the programs of the packages your
+  project uses, from the binary cache, without building them.
+- The secret names sops-nix can define come from the keys of your secrets files, which sops leaves
+  readable.
+- Options nixpkgs renamed still typecheck, struck through as deprecated.
 
 ## Get started
 
@@ -64,14 +75,23 @@ pnpm exec typeflake types nixosConfigurations.server
 ```
 
 Render first: the probe evaluates your configuration, which imports the rendered files. Then include
-the generated declarations in `tsconfig.json`:
+the generated declarations in `tsconfig.json`. The other two settings let modules import `.nix`
+files, whose declarations `typeflake types` writes to `.typeflake/files/`:
 
 ```json
-{ "include": ["**/*.nix.ts", ".typeflake/*.ts"] }
+{
+  "compilerOptions": { "allowArbitraryExtensions": true, "rootDirs": [".", ".typeflake/files"] },
+  "include": ["**/*.nix.ts", ".typeflake/**/*.ts"]
+}
 ```
 
 Run `typeflake render --check` in CI so the `.nix` files never fall behind their modules. Commit them;
 your flake builds from them, and `.typeflake/` stays out of the repository.
+
+Before you update `flake.lock`, `typeflake bump nixosConfigurations.server` updates the inputs into
+a separate lock file, probes against it and typechecks every module against the types the update
+brings. It lists the new errors and the renamed options you use; `--fix` rewrites renames that only
+change an option's last name, and `--apply` keeps the update when nothing breaks.
 
 A `config` function returns its definitions through `define({...})`, `mkIf` or another helper.
 TypeScript only checks an object literal for misspelled keys when it is an argument, so a plain object

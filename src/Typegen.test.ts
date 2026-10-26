@@ -40,16 +40,47 @@ describe("generate", () => {
     expect(source).toContain("readonly passwordFile: NixPath\n");
   });
 
-  it("registers the probed package names as pkgs", () => {
+  it("types a renamed option like the option it was renamed to, and marks it deprecated", () => {
+    const source = generateNixos({
+      services: {
+        group: {
+          ssh: {
+            group: {
+              permitRoot: {
+                ...option({ name: "unspecified" }),
+                visible: false,
+                description: 'Alias of {option}`services.ssh.settings."Permit.Root"`.',
+              },
+              settings: { group: { "Permit.Root": option({ name: "bool" }) } },
+            },
+          },
+        },
+      },
+    });
+
+    expect(source).toContain(
+      "/**\n   * @deprecated Renamed to `services.ssh.settings.Permit.Root`.\n   */\n  readonly permitRoot: boolean",
+    );
+  });
+
+  it("names an attribute set's entries by what a provider found", () => {
     const source = generate(
-      {},
-      { rootClass: "nixos", importFrom: "typeflake", packages: ["git", "0ad"] },
+      {
+        sops: {
+          group: { secrets: option({ name: "attrsOf", nested: { elemType: { name: "str" } } }) },
+        },
+      },
+      {
+        rootClass: "nixos",
+        importFrom: "typeflake",
+        names: new Map([["sops.secrets", 'Register["sopsSecrets"]']]),
+      },
     ).source;
 
     expect(source).toContain(
-      'export interface Packages {\n  readonly git: Package\n  readonly "0ad": Package\n}',
+      'readonly secrets: { readonly [K in Register["sopsSecrets"]]?: string }',
     );
-    expect(source).toContain("readonly pkgs: Packages");
+    expect(source).toContain('import type { Register } from "typeflake"');
   });
 
   it("aliases an option that contains itself, and points the inner one at the alias", () => {

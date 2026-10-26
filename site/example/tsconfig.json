@@ -1,5 +1,10 @@
 {
   "extends": "../../tsconfig.json",
-  "compilerOptions": { "types": [] },
-  "include": ["**/*.nix.ts", ".typeflake/*.ts"]
+  "compilerOptions": {
+    "types": [],
+    // `import site from "./site.nix"` reads the declaration `typeflake types` wrote for it.
+    "allowArbitraryExtensions": true,
+    "rootDirs": [".", ".typeflake/files"]
+  },
+  "include": ["**/*.nix.ts", ".typeflake/**/*.ts"]
 }

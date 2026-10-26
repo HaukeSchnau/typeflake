@@ -166,7 +166,7 @@ interface Link {
   readonly nix: ReadonlyArray<string>;
 }
 const links: ReadonlyArray<Link> = [
-  { id: "args", ts: ["{ config, lib, pkgs }"], nix: ["{ config, lib, pkgs, ... }"] },
+  { id: "args", ts: ["{ config, pkgs }"], nix: ["{ config, lib, pkgs, ... }"] },
   {
     id: "option",
     ts: [
@@ -180,7 +180,7 @@ const links: ReadonlyArray<Link> = [
   },
   {
     id: "site",
-    ts: ['const site = pkgs.callPackage(path("./site.nix"), {});', "root: site"],
+    ts: ['import site from "./site.nix";', "root: pkgs.callPackage(site, {})"],
     nix: ["root = pkgs.callPackage ./site.nix { };"],
   },
   {
@@ -202,8 +202,8 @@ const links: ReadonlyArray<Link> = [
   { id: "script", ts: ["script: nix`"], nix: ["script = ''"] },
   {
     id: "exe",
-    ts: ["${lib.getExe(pkgs.lychee)}"],
-    nix: ["${lib.getExe pkgs.lychee}"],
+    ts: ['${exe(pkgs.lychee, "lychee")}'],
+    nix: ['${lib.getExe\' pkgs.lychee "lychee"}'],
   },
 ];
 

@@ -60,10 +60,16 @@ const edits = [
     replace: "pkgs.ripgerp]",
   },
   {
-    file: "hosts/server.nix.ts",
-    label: "A string where a package belongs",
-    find: "pkgs.ripgrep]",
-    replace: '"ripgrep"]',
+    file: "modules/blog.nix.ts",
+    label: "A program lychee doesn't ship",
+    find: 'exe(pkgs.lychee, "lychee")',
+    replace: 'exe(pkgs.lychee, "lychie")',
+  },
+  {
+    file: "modules/blog.nix.ts",
+    label: "An argument site.nix doesn't take",
+    find: "pkgs.callPackage(site, {})",
+    replace: 'pkgs.callPackage(site, { title: "Blog" })',
   },
   {
     file: "hosts/server.nix.ts",

@@ -112,7 +112,13 @@ export default defineConfig({
       {
         // The CLI reads files, spawns `nix` and parses arguments, which Effect 4 ships only as
         // unstable modules; the lockfile pins the Effect version they come from.
-        files: ["src/Cli.ts", "src/Project.ts"],
+        files: [
+          "src/Bump.ts",
+          "src/Cli.ts",
+          "src/Project.ts",
+          "src/Provider.ts",
+          "src/providers/*.ts",
+        ],
         rules: { "effecttsgo/unstable-api-usage": "off" },
       },
     ],

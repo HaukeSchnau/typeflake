@@ -29,6 +29,8 @@ export interface NixOption {
   readonly default: string | null;
   readonly readOnly: boolean;
   readonly internal: boolean;
+  /** Why the option's type is deprecated, such as `types.string`'s. */
+  readonly deprecated?: string | null;
 }
 
 export interface OptionGroup {
@@ -65,6 +67,7 @@ const NixOption = Schema.Struct({
   default: Schema.NullOr(Schema.String),
   readOnly: Schema.Boolean,
   internal: Schema.Boolean,
+  deprecated: Schema.NullOr(Schema.String).pipe(Schema.optionalKey),
 });
 
 const OptionTree: Schema.Codec<OptionTree> = Schema.Record(
@@ -77,8 +80,14 @@ const OptionTree: Schema.Codec<OptionTree> = Schema.Record(
 
 export const decodeOptionTree = Schema.decodeUnknownEffect(Schema.fromJsonString(OptionTree));
 
-/** What `typeflake types` reads from one configuration: its options and the names in its `pkgs`. */
-export const Probed = Schema.Struct({ options: OptionTree, packages: Schema.Array(Schema.String) });
+/**
+ * What `typeflake types` reads from one configuration: its options, and each provider's findings as
+ * JSON, or null where the provider's expression failed.
+ */
+export const Probed = Schema.Struct({
+  options: OptionTree,
+  providers: Schema.Record(Schema.String, Schema.NullOr(Schema.String)),
+});
 
 export const decodeProbed = Schema.decodeUnknownEffect(Schema.fromJsonString(Probed));
 

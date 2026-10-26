@@ -22,7 +22,7 @@ export {
   type Override,
   type Data,
 } from "./Definition.ts";
-export type { Builders, Lib, Pkgs } from "./Lib.ts";
+export { type BinaryOf, type Builders, type CallPackage, exe, type Lib, type Pkgs } from "./Lib.ts";
 export * as Module from "./Module.ts";
 export {
   builtins,
@@ -38,6 +38,13 @@ export {
   raw,
   type Unsupported,
 } from "./Nix.ts";
+export {
+  type Argument,
+  type ModuleFile,
+  type NixFile,
+  type PackageFile,
+  registerImports,
+} from "./NixFile.ts";
 export * as Options from "./Options.ts";
 export * as Probe from "./Probe.ts";
 export * as Typegen from "./Typegen.ts";
