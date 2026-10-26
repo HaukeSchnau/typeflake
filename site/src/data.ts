@@ -27,11 +27,20 @@ export interface Mistake {
   readonly message: string;
 }
 
+export interface Check {
+  readonly compiler: "tsrs" | "tsc";
+  /** What `--version` printed. */
+  readonly version: string;
+  /** The median of three runs. */
+  readonly seconds: number;
+  /** Peak resident memory, the median of three runs. */
+  readonly megabytes: number;
+}
+
 /** What scripts/example.ts measured and recorded on site/example. */
 export interface Example {
   /** The date of the run, `YYYY-MM-DD`. */
   readonly measuredOn: string;
-  readonly typescript: string;
   /** Visible options of the server, Home Manager's included. */
   readonly options: number;
   /** Top-level names in the server's `pkgs`. */
@@ -43,8 +52,8 @@ export interface Example {
   /** How long `typeflake types` took for both configurations. */
   readonly typesSeconds: number;
   readonly typesBytes: number;
-  /** How long tsc took to check the example. */
-  readonly checkSeconds: number;
+  /** Each compiler's check of the example, tsrs first: it reported the mistakes. */
+  readonly checks: ReadonlyArray<Check>;
   /** The `drvPath` of each configuration's system, evaluated by Nix alone. */
   readonly drvPaths: ReadonlyArray<string>;
   readonly mistakes: ReadonlyArray<Mistake>;

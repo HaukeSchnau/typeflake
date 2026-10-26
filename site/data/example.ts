@@ -3,14 +3,27 @@ import type { Example } from "../src/data.ts";
 
 export const example: Example = {
   measuredOn: "2026-10-26",
-  typescript: "7.0.2",
   options: 30419,
   packages: 28458,
   rendered: "rendered hosts/laptop.nix\nrendered hosts/server.nix\nrendered modules/blog.nix",
   typed: "wrote .typeflake/ for nixos, homeManager, service, darwin, pkgs, binaries",
-  typesSeconds: 26.9,
+  typesSeconds: 28.6,
   typesBytes: 7469567,
-  checkSeconds: 2.6,
+  checks: [
+    {
+      compiler: "tsrs",
+      version:
+        "Version 7.1.0-dev.20260930.4 (tsrs 0.18.0-ts7.1.0-dev.20260929, microsoft/TypeScript@b85298b6a81f)",
+      seconds: 0.73,
+      megabytes: 146,
+    },
+    {
+      compiler: "tsc",
+      version: "Version 7.0.2+effect-tsgo.0.56.0",
+      seconds: 2.55,
+      megabytes: 354,
+    },
+  ],
   drvPaths: [
     "/nix/store/vl1ywz0v4asxlzj363ylqvrrdag23kx6-nixos-system-server-26.11.20261017.09063bd.drv",
     "/nix/store/4xxzsdpc4sasab21d861d23xnr0dh7l3-darwin-system-26.11.f0ec2b3.drv",

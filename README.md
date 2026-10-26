@@ -67,11 +67,12 @@ You need Node 24 or newer, Nix with flakes, and a flake with NixOS, nix-darwin o
 configurations.
 
 ```sh
-pnpm add -D typeflake@next
+pnpm add -D typeflake@next tsrs
 
 # Write modules/blog.nix.ts, and import ./modules/blog.nix in flake.nix.
 pnpm exec typeflake render
 pnpm exec typeflake types nixosConfigurations.server
+pnpm exec tsrs --noEmit
 ```
 
 Render first: the probe evaluates your configuration, which imports the rendered files. Then include
@@ -87,6 +88,11 @@ files, whose declarations `typeflake types` writes to `.typeflake/files/`:
 
 Run `typeflake render --check` in CI so the `.nix` files never fall behind their modules. Commit them;
 your flake builds from them, and `.typeflake/` stays out of the repository.
+
+The generated declarations run to megabytes, so we check with [tsrs](https://github.com/oxc-project/tsrs),
+Oxc's Rust port of the TypeScript compiler. It reports what `tsc` does: on the website's example it
+takes 0.73 s and 146 MB where `tsc` takes 2.55 s and 354 MB. `tsc` works too. tsrs is a glibc
+binary, so on NixOS it needs `programs.nix-ld.enable`.
 
 Before you update `flake.lock`, `typeflake bump nixosConfigurations.server` updates the inputs into
 a separate lock file, probes against it and typechecks every module against the types the update

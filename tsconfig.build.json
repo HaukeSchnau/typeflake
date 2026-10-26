@@ -8,9 +8,7 @@
     "noEmit": false,
     "declaration": true,
     "rootDir": "src",
-    "outDir": "dist",
-    // The build only emits; `vp check` reports the Effect plugin's diagnostics.
-    "plugins": []
+    "outDir": "dist"
   },
   "include": ["src"],
   "exclude": ["src/**/*.test.ts"]

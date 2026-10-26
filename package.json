@@ -36,7 +36,7 @@
     "./package.json": "./package.json"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.build.json",
+    "build": "tsrs -p tsconfig.build.json",
     "check": "vp check",
     "test": "vp test run",
     "prepare": "effect-tsgo patch --oxlint && vp config --no-agent",
@@ -54,6 +54,7 @@
     "@oxlint/plugins": "1.89.0",
     "@types/node": "^26.6.5",
     "oxlint": "1.89.0",
+    "tsrs": "0.18.0-ts7.1.0-dev.20260929",
     "typescript": "^7.0.2",
     "vite": "^8.3.5",
     "vite-plus": "^1.4.0"

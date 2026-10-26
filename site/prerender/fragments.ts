@@ -272,6 +272,13 @@ const optionCount = (node: GraphNode): number => {
 };
 const vhostOptions = optionCount(find(tree, ["services", "nginx", "virtualHosts", "<name>"]));
 
+// tsrs reported the mistakes; tsc is there for comparison.
+const [checkedBy, tsc] = example.checks;
+if (checkedBy?.compiler !== "tsrs" || tsc?.compiler !== "tsc")
+  throw new Error("data/example.ts must hold tsrs's check, then tsc's");
+// `Version 7.1.0-dev… (tsrs 0.18.0-ts7.1.0-dev…, microsoft/TypeScript@…)`
+const tsrsVersion = /tsrs (\d+\.\d+\.\d+)/.exec(checkedBy.version)?.[1] ?? checkedBy.version;
+
 const megabytes = (bytes: number) => `${(bytes / 1_000_000).toFixed(1)} MB`;
 
 const shell = (lines: ReadonlyArray<string>, output?: string): string =>
@@ -329,7 +336,7 @@ export const fragments = new Map([
   ["mistake-list", mistakeList.join("\n")],
   ["editor-file", escape(firstFile)],
   ["editor-code", highlight(read(`example/${firstFile}`), "typescript", { numbered: true })],
-  ["checked-with", escape(`TypeScript ${example.typescript}`)],
+  ["checked-with", escape(`Checked by ${checkedBy.compiler} ${tsrsVersion}`)],
   ["mistake-templates", [...files.map(editorFor), ...mistakeTemplates].join("\n")],
   ["step-render", shell(["pnpm exec typeflake render"], example.rendered)],
   [
@@ -343,10 +350,10 @@ export const fragments = new Map([
     "probe-numbers",
     `For the example that is ${number.format(example.options)} options and ${number.format(example.packages)} package names, ${megabytes(example.typesBytes)} of declarations, in ${example.typesSeconds} seconds.`,
   ],
-  ["step-check", shell(["pnpm exec tsc --noEmit"])],
+  ["step-check", shell(["pnpm exec tsrs --noEmit"])],
   [
     "check-numbers",
-    `Checking the example against all of them takes ${example.checkSeconds} seconds.`,
+    `tsrs, the Rust port of TypeScript's compiler, checks the example against all of them in ${checkedBy.seconds} seconds with ${checkedBy.megabytes} MB of memory. tsc takes ${tsc.seconds} seconds and ${tsc.megabytes} MB.`,
   ],
   [
     "step-build",
@@ -359,17 +366,28 @@ export const fragments = new Map([
     "start-sh",
     highlight(
       [
-        "pnpm add -D typeflake@next",
+        "pnpm add -D typeflake@next tsrs",
         "",
         "# Write modules/blog.nix.ts, and import ./modules/blog.nix in flake.nix.",
         "pnpm exec typeflake render",
         "pnpm exec typeflake types nixosConfigurations.server",
+        "pnpm exec tsrs --noEmit",
       ].join("\n"),
       "shellscript",
     ),
   ],
   [
     "start-tsconfig",
-    highlight(JSON.stringify({ include: ["**/*.nix.ts", ".typeflake/*.ts"] }, null, 2), "json"),
+    highlight(
+      JSON.stringify(
+        {
+          compilerOptions: { allowArbitraryExtensions: true, rootDirs: [".", ".typeflake/files"] },
+          include: ["**/*.nix.ts", ".typeflake/**/*.ts"],
+        },
+        null,
+        2,
+      ),
+      "json",
+    ),
   ],
 ]);

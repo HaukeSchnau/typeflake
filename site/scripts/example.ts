@@ -1,5 +1,5 @@
 // Regenerates what the page says about site/example from real runs: the rendered .nix files, the
-// option tree the snowflake draws, the measurements, and what tsc reports for each mistake. Needs Nix
+// option tree the snowflake draws, the measurements, and what tsrs reports for each mistake. Needs Nix
 // and the built package (`pnpm build` at the repository root), then from site/:
 //
 //   node scripts/example.ts && pnpm exec vp fmt data
@@ -17,14 +17,15 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { stripVTControlCharacters } from "node:util";
-import type { Example, Graph, GraphNode, Mistake } from "../src/data.ts";
+import type { Check, Example, Graph, GraphNode, Mistake } from "../src/data.ts";
 
 const site = join(import.meta.dirname, "..");
 const root = join(site, "..");
 const example = join(site, "example");
 const cli = join(root, "src/Cli.ts");
 const probeFile = join(root, "src/probe.nix");
-const tsc = join(site, "node_modules/.bin/tsc");
+const compilers = ["tsrs", "tsc"] as const;
+const bin = (compiler: (typeof compilers)[number]) => join(site, "node_modules/.bin", compiler);
 const configurations = ["nixosConfigurations.server", "darwinConfigurations.laptop"];
 
 // The example's own tsconfig and modules, each with one edit. The page names them by their labels.
@@ -105,6 +106,9 @@ const run = (command: string, args: ReadonlyArray<string>, cwd = example) =>
     // The probe prints about 20 MB of JSON.
     maxBuffer: 2 ** 30,
   });
+
+/** The middle of three runs. */
+const median = (values: ReadonlyArray<number>) => values.toSorted((a, b) => a - b)[1] ?? 0;
 
 const seconds = (start: number) => Math.round((performance.now() - start) / 100) / 10;
 
@@ -302,14 +306,28 @@ try {
     return file;
   });
 
-  const version = run(tsc, ["--version"]).trim();
-  const checkStart = performance.now();
-  const clean = spawnSync(tsc, ["-p", example, "--noEmit"], { encoding: "utf8" });
-  const checkSeconds = seconds(checkStart);
-  if (clean.status !== 0) throw new Error(`the example has errors:\n${clean.stdout}`);
+  // GNU time reports peak memory, which the comparison is about as much as speed.
+  const checks = compilers.map((compiler): Check => {
+    const runs = [0, 1, 2].map(() => {
+      const result = spawnSync("time", ["-f", "%e %M", bin(compiler), "-p", example, "--noEmit"], {
+        encoding: "utf8",
+      });
+      if (result.status !== 0) throw new Error(`the example has errors:\n${result.stdout}`);
+      const [elapsed = "0", kilobytes = "0"] =
+        result.stderr.trim().split("\n").at(-1)?.split(" ") ?? [];
+      return { seconds: Number(elapsed), megabytes: Math.round(Number(kilobytes) / 1024) };
+    });
+    return {
+      compiler,
+      version: run(bin(compiler), ["--version"]).trim(),
+      seconds: median(runs.map((check) => check.seconds)),
+      megabytes: median(runs.map((check) => check.megabytes)),
+    };
+  });
 
   const output = stripVTControlCharacters(
-    spawnSync(tsc, ["-p", ".", "--noEmit", "--pretty"], { cwd: dir, encoding: "utf8" }).stdout,
+    spawnSync(bin("tsrs"), ["-p", ".", "--noEmit", "--pretty"], { cwd: dir, encoding: "utf8" })
+      .stdout,
   );
   // `file:line:column - error TSnnnn: message`, continuation lines, then the line and its squiggle.
   const reports = [
@@ -344,7 +362,6 @@ try {
     statSync(join(example, ".typeflake", `${configuration}.ts`)).size;
   const result: Example = {
     measuredOn: new Date().toISOString().slice(0, 10),
-    typescript: version.replace(/^Version /, "").replace(/\+.*$/, ""),
     options,
     packages: Number(
       run("nix", [
@@ -360,7 +377,7 @@ try {
     typesBytes:
       configurations.reduce((sum, configuration) => sum + size(configuration), 0) +
       statSync(join(example, ".typeflake/providers.ts")).size,
-    checkSeconds,
+    checks,
     drvPaths,
     mistakes,
   };

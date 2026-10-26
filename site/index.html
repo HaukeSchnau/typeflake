@@ -195,8 +195,8 @@
           <h2 id="mistakes-h">Mistakes fail in your editor</h2>
           <p>
             Nix finds these when it evaluates a configuration, often on the machine you deploy to.
-            With Typeflake, <code>tsc</code> finds them while you type. Pick one to make it in the
-            example.
+            With Typeflake, the TypeScript compiler finds them while you type. Pick one to make it
+            in the example.
           </p>
         </div>
         <div class="mistakes-body">
@@ -314,7 +314,9 @@
           <p>
             Then add the generated declarations to <code>tsconfig.json</code>, and run
             <code>typeflake render --check</code> in CI so the <code>.nix</code> files never fall
-            behind their modules.
+            behind their modules. The declarations run to megabytes, so we check with tsrs, the Rust
+            port of TypeScript's compiler. It reports what <code>tsc</code> does, and
+            <code>tsc</code> works too.
           </p>
           <!-- @start-tsconfig -->
         </div>
@@ -329,8 +331,13 @@
               seconds.
             </li>
             <li>
-              <code>typeflake types</code> for options and package names, and
-              <code>typeflake render</code>, with <code>--check</code> for CI.
+              <code>typeflake types</code> for options, packages and their programs, sops-nix secret
+              names and imported <code>.nix</code> files, and <code>typeflake render</code>, with
+              <code>--check</code> for CI.
+            </li>
+            <li>
+              <code>typeflake bump</code>, which typechecks every module against a flake update
+              before you take it.
             </li>
             <li>
               <code>NixOS.module</code>, <code>Darwin.module</code>,
@@ -351,6 +358,10 @@
               <code>python3Packages</code>.
             </li>
             <li>Modules shared between NixOS and nix-darwin.</li>
+            <li>
+              A typed graph of the whole fleet, where connecting two hosts writes the configuration
+              on both ends.
+            </li>
           </ul>
         </div>
       </section>

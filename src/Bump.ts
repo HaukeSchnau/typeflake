@@ -85,7 +85,7 @@ export interface Diagnostic {
   readonly message: string;
 }
 
-/** `file(line,column): error TSnnnn: message`, as `tsc --pretty false` prints it. */
+/** `file(line,column): error TSnnnn: message`, as `tsrs` and `tsc` print it with `--pretty false`. */
 const diagnostics = (output: string): ReadonlyArray<Diagnostic> =>
   [
     ...output.matchAll(
@@ -129,11 +129,15 @@ const check = (root: string, directory: string, modules: ReadonlyArray<string>) 
         2,
       ),
     );
-    const local = path.join(root, "node_modules/.bin/tsc");
-    const tsc = (yield* fs.exists(local)) ? local : "tsc";
-    const { output } = yield* run(tsc, ["-p", directory, "--pretty", "false"], root);
+    // tsrs reports what tsc does, with less than half the memory on generated declarations.
+    const installed = yield* Effect.filter(["tsrs", "tsc"], (name) =>
+      fs.exists(path.join(root, "node_modules/.bin", name)),
+    );
+    const checker =
+      installed[0] === undefined ? "tsc" : path.join(root, "node_modules/.bin", installed[0]);
+    const { output } = yield* run(checker, ["-p", directory, "--pretty", "false"], root);
     yield* fs.remove(path.join(directory, "tsconfig.json"));
-    // Paths come out relative to the root, where tsc runs.
+    // Paths come out relative to the root, where the checker runs.
     return diagnostics(output).filter((found) => !found.file.includes(".typeflake"));
   });
 
