@@ -2,7 +2,8 @@
 # workflow (`npm trust github typeflake --file publish.yml --repository HaukeSchnau/typeflake
 # --allow-publish`), so there's no token to store and no approval to give. npm accepts that only
 # from GitHub-hosted runners, GitLab.com and CircleCI, which is why this runs here and not on Calder.
-# GitHub can't see Calder's results, so the job runs the same check and tests before it publishes.
+# GitHub can't see Calder's results, so the job runs the tests, and `npm publish` builds, which
+# type-checks the package. Lint stays with Calder: `.calder/` extends a tsconfig only Calder has.
 name: Publish
 
 on:
@@ -39,9 +40,8 @@ jobs:
         uses: cachix/install-nix-action@v31
 
       - if: steps.version.outputs.publish == 'true'
-        name: Check, test and publish
+        name: Test and publish
         run: |
           nix develop .#ci --command pnpm install --frozen-lockfile
-          nix develop .#ci --command pnpm run check
           nix develop .#ci --command pnpm test
           nix develop .#ci --command npm publish --access public
