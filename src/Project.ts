@@ -73,15 +73,35 @@ export type Services = FileSystem.FileSystem | Path.Path | ChildProcessSpawner.C
 
 /** A module file `x.nix.ts` renders `x.nix` next to it, so its relative paths stay valid. */
 const suffix = ".nix.ts";
-const skipped = /(^|\/)(node_modules|\.git|\.jj|\.typeflake|dist|result)(\/|$)/;
+const skipped = new Set(["node_modules", ".git", ".jj", ".typeflake", "dist", "result"]);
 
-/** The module files under `root`, relative to it. */
-export const moduleFiles = (root: string) =>
+/**
+ * The files under `root` whose name ends in `extension`, relative to it. The walk skips
+ * `node_modules` and the like before entering them, and doesn't follow symlinks: Node's recursive
+ * `readdir` does, and through pnpm's `node_modules`, whose packages link to each other, a listing
+ * grew past 12 GB.
+ */
+const projectFiles = (root: string, extension: string) =>
   Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem;
-    const entries = yield* fs.readDirectory(root, { recursive: true });
-    return entries.filter((entry) => entry.endsWith(suffix) && !skipped.test(entry)).toSorted();
+    const path = yield* Path.Path;
+    const found: Array<string> = [];
+    const visit = (directory: string): Effect.Effect<void, PlatformError.PlatformError> =>
+      Effect.gen(function* () {
+        for (const name of yield* fs.readDirectory(path.join(root, directory))) {
+          if (skipped.has(name)) continue;
+          const file = directory === "" ? name : `${directory}/${name}`;
+          const info = yield* fs.lstat(path.join(root, file));
+          if (info.type === "Directory") yield* visit(file);
+          else if (info.type === "File" && name.endsWith(extension)) found.push(file);
+        }
+      });
+    yield* visit("");
+    return found.toSorted();
   });
+
+/** The module files under `root`, relative to it. */
+export const moduleFiles = (root: string) => projectFiles(root, suffix);
 
 export interface Rendered {
   /** The `.nix` file, relative to the project root. */
@@ -214,12 +234,7 @@ export const providers: ReadonlyArray<Provider.Provider> = [
 ];
 
 /** The project's `.nix` files, relative to `root`. */
-export const nixFiles = (root: string) =>
-  Effect.gen(function* () {
-    const fs = yield* FileSystem.FileSystem;
-    const entries = yield* fs.readDirectory(root, { recursive: true });
-    return entries.filter((entry) => entry.endsWith(".nix") && !skipped.test(entry)).toSorted();
-  });
+export const nixFiles = (root: string) => projectFiles(root, ".nix");
 
 export interface TypesOptions extends ProbeOptions {
   /** Where the declarations go, relative to the root. */

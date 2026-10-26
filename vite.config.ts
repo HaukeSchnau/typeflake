@@ -116,6 +116,7 @@ export default defineConfig({
           "src/Bump.ts",
           "src/Cli.ts",
           "src/Project.ts",
+          "src/Project.test.ts",
           "src/Provider.ts",
           "src/providers/*.ts",
         ],
