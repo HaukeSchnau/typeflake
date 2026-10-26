@@ -40,7 +40,7 @@
     "check": "vp check",
     "test": "vp test run",
     "prepare": "effect-tsgo patch --oxlint && vp config --no-agent",
-    "prepack": "tsc -p tsconfig.build.json"
+    "prepack": "pnpm build"
   },
   "dependencies": {
     "@effect/platform-node": "^4.0.6",
