@@ -366,7 +366,7 @@ export const fragments = new Map([
     "start-sh",
     highlight(
       [
-        "pnpm add -D typeflake@next tsrs",
+        "pnpm add -D typeflake tsrs",
         "",
         "# Write modules/blog.nix.ts, and import ./modules/blog.nix in flake.nix.",
         "pnpm exec typeflake render",

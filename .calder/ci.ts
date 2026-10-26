@@ -1,5 +1,5 @@
-import { Calder, On, Task, cmd } from "@calder-ci/core";
-import { Npm, Pnpm, Project } from "@calder-ci/std";
+import { Calder, Task, cmd } from "@calder-ci/core";
+import { Pnpm, Project } from "@calder-ci/std";
 import { Schema } from "effect";
 import { flake } from "./flake.ts";
 
@@ -25,7 +25,6 @@ const site = Project.alchemy({
   previews: { url: (_pr, outputs) => outputs.url },
 });
 
-/** A commit that raises the version stages it on npm, for a maintainer to approve with 2FA. */
-const release = Npm.publish({ shell, setup: install, token: "npm", after: checks });
-
-export default Calder.project({ rules: [...site.rules, On.push("main", [release])] });
+// npm releases are published from GitHub (.github/workflows/publish.yml), which npm trusts without a
+// token; it doesn't trust Calder.
+export default Calder.project({ rules: site.rules });

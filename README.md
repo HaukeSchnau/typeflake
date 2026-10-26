@@ -67,7 +67,7 @@ You need Node 24 or newer, Nix with flakes, and a flake with NixOS, nix-darwin o
 configurations.
 
 ```sh
-pnpm add -D typeflake@next tsrs
+pnpm add -D typeflake tsrs
 
 # Write modules/blog.nix.ts, and import ./modules/blog.nix in flake.nix.
 pnpm exec typeflake render
