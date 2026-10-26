@@ -1,6 +1,6 @@
 {
   "name": "typeflake",
-  "version": "0.1.0-alpha.3",
+  "version": "0.2.0",
   "description": "Typed Nix modules written in Effect TypeScript.",
   "keywords": [
     "effect",

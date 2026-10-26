@@ -198,13 +198,12 @@ against the 7.0 MB of declarations in 2.6 s. `site/scripts/example.ts` measures 
 
 ## Releases
 
-A commit on `main` that raises the version publishes it. Calder runs the checks and deploys the site,
-but npm accepts publishing without a person only through OIDC from GitHub-hosted runners, GitLab.com
-or CircleCI, and tokens that bypass 2FA are on their way out. So `.github/workflows/publish.yml` on
-the GitHub mirror publishes, after running the tests and the build, which type-checks: GitHub can't
-see Calder's results, since Gitea is on the tailnet. npm trusts that workflow by name, set once with `npm trust
-github`, so there is no token and no approval. Every release is `latest`; dist-tags from OIDC need npm
-11.21.
+A commit on `main` that raises the version stages it on npm: Calder's `Npm.publish` runs after the
+checks. A maintainer then approves the staged release with 2FA, with `npm stage approve` or one tap on
+npmjs.com. npm accepts publishing without a person only through OIDC from GitHub-hosted runners,
+GitLab.com or CircleCI, and from January 2027 no token may publish directly, so the approval stays as
+long as releases come from Calder. Versions have no prerelease suffix (0.x already says unstable), so
+Calder stages them as `latest`.
 
 ## Next
 
