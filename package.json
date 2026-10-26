@@ -21,7 +21,7 @@
     "url": "git+https://github.com/HaukeSchnau/typeflake.git"
   },
   "bin": {
-    "typeflake": "./dist/Cli.js"
+    "typeflake": "dist/Cli.js"
   },
   "files": [
     "dist",

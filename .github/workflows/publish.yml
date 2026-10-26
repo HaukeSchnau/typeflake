@@ -44,8 +44,6 @@ jobs:
         run: |
           nix develop .#ci --command pnpm install --frozen-lockfile
           nix develop .#ci --command pnpm test
-          # npm checks `bin` before prepack builds, and drops it if dist/Cli.js isn't there yet.
-          nix develop .#ci --command pnpm build
           # Until 1.0 every release is a prerelease, and npm wants their tag named. latest, so
           # `pnpm add typeflake` gets the newest.
           nix develop .#ci --command npm publish --access public --tag latest
