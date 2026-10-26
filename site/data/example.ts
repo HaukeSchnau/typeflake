@@ -2,15 +2,15 @@
 import type { Example } from "../src/data.ts";
 
 export const example: Example = {
-  measuredOn: "2026-10-24",
+  measuredOn: "2026-10-26",
   typescript: "7.0.2",
   options: 30419,
   packages: 28458,
   rendered: "rendered hosts/laptop.nix\nrendered hosts/server.nix\nrendered modules/blog.nix",
-  typed: "wrote .typeflake/ for nixos, homeManager, service, pkgs, darwin",
-  typesSeconds: 13.8,
-  typesBytes: 6982856,
-  checkSeconds: 2.7,
+  typed: "wrote .typeflake/ for nixos, homeManager, service, darwin, pkgs, binaries",
+  typesSeconds: 26.9,
+  typesBytes: 7469567,
+  checkSeconds: 2.6,
   drvPaths: [
     "/nix/store/vl1ywz0v4asxlzj363ylqvrrdag23kx6-nixos-system-server-26.11.20261017.09063bd.drv",
     "/nix/store/4xxzsdpc4sasab21d861d23xnr0dh7l3-darwin-system-26.11.f0ec2b3.drv",
@@ -38,7 +38,7 @@ export const example: Example = {
       length: 15,
       diagnostic: 2322,
       message:
-        "Type '\"never\"' is not assignable to type 'Definition<ServicesOpensshSettingsPermitRootLoginValue> | undefined'.",
+        "Type '\"never\"' is not assignable to type 'Definition<ServicesOpensshPermitRootLoginValue> | undefined'.",
     },
     {
       label: "A typo inside a user",
@@ -77,15 +77,28 @@ export const example: Example = {
         "Property 'ripgerp' does not exist on type 'NixProxy<Pkgs>'. Did you mean 'ripgrep'?",
     },
     {
-      label: "A string where a package belongs",
-      file: "hosts/server.nix.ts",
-      find: "pkgs.ripgrep]",
-      replace: '"ripgrep"]',
+      label: "A program lychee doesn't ship",
+      file: "modules/blog.nix.ts",
+      find: 'exe(pkgs.lychee, "lychee")',
+      replace: 'exe(pkgs.lychee, "lychie")',
       line: 43,
-      column: 49,
-      length: 9,
-      diagnostic: 2322,
-      message: "Type 'string' is not assignable to type 'Definition<Package>'.",
+      column: 34,
+      length: 8,
+      diagnostic: 2345,
+      message:
+        "Argument of type '\"lychie\"' is not assignable to parameter of type '\"lychee\" | Nix<string>'.",
+    },
+    {
+      label: "An argument site.nix doesn't take",
+      file: "modules/blog.nix.ts",
+      find: "pkgs.callPackage(site, {})",
+      replace: 'pkgs.callPackage(site, { title: "Blog" })',
+      line: 25,
+      column: 46,
+      length: 5,
+      diagnostic: 2353,
+      message:
+        "Object literal may only specify known properties, and 'title' does not exist in type '{ readonly writeTextDir?: Argument | undefined; }'.",
     },
     {
       label: "The blog's own option, misspelled",

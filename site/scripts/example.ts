@@ -286,7 +286,10 @@ try {
   writeFileSync(
     join(dir, "tsconfig.json"),
     JSON.stringify({
-      ...JSON.parse(readFileSync(join(example, "tsconfig.json"), "utf8")),
+      // tsconfig.json allows comments, and the example's has whole-line ones.
+      ...JSON.parse(
+        readFileSync(join(example, "tsconfig.json"), "utf8").replaceAll(/^\s*\/\/.*$/gm, ""),
+      ),
       extends: join(root, "tsconfig.json"),
     }),
   );
@@ -354,7 +357,9 @@ try {
     rendered,
     typed,
     typesSeconds,
-    typesBytes: configurations.reduce((sum, configuration) => sum + size(configuration), 0),
+    typesBytes:
+      configurations.reduce((sum, configuration) => sum + size(configuration), 0) +
+      statSync(join(example, ".typeflake/providers.ts")).size,
     checkSeconds,
     drvPaths,
     mistakes,
