@@ -12,10 +12,11 @@
     "@fontsource-variable/recursive": "^5.3.0"
   },
   "devDependencies": {
-    "@effect/platform-node": "4.0.5",
+    "@alchemy.run/cloudflare": "2.0.0-beta.85",
+    "@effect/platform-node": "4.1.2",
     "@types/node": "^26.6.5",
-    "alchemy": "2.0.0-beta.83",
-    "effect": "4.0.5",
+    "alchemy": "2.0.0-beta.85",
+    "effect": "4.1.2",
     "shiki": "^4.5.0",
     "tsrs": "0.18.0-ts7.1.0-dev.20260929",
     "typeflake": "workspace:*",
