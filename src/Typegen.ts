@@ -34,19 +34,23 @@ export const generate = (tree: OptionTree, options: GenerateOptions): Generated 
 
   const reserve = (base: string): string => {
     let name = base;
+
     for (let n = 2; names.has(name); n++) name = `${base}${n}`;
     names.add(name);
+
     return name;
   };
 
   const hoist = (kind: "interface" | "type", path: ReadonlyArray<string>, body: string): string => {
     const existing = bodies.get(body);
+
     if (existing !== undefined) return existing;
     const name = reserve(pascal(path));
     bodies.set(body, name);
     declarations.push(
       kind === "interface" ? `export interface ${name} ${body}` : `export type ${name} = ${body}`,
     );
+
     return name;
   };
 
@@ -79,14 +83,18 @@ export const generate = (tree: OptionTree, options: GenerateOptions): Generated 
             },
           ];
         }
+
         if (node.visible !== false) {
           return [{ key, docs: doc(node), type: optionType(node, [...path, key]) }];
         }
+
         // nixpkgs keeps a renamed option as a hidden alias of the new one, which the editor shows
         // struck through.
         const renamed = renamedTo(node);
         const target = renamed === undefined ? undefined : find(scope, renamed);
+
         if (renamed === undefined || target === undefined) return [];
+
         return [
           {
             key,
@@ -95,14 +103,17 @@ export const generate = (tree: OptionTree, options: GenerateOptions): Generated 
           },
         ];
       });
+
     const lines = fields.map(
       (field) => `${field.docs}readonly ${property(field.key)}: ${field.type}`,
     );
+
     if (freeform !== undefined) {
       lines.push(
         `readonly [name: string]: ${[...new Set([freeform, ...fields.map((field) => field.type)])].join(" | ")}`,
       );
     }
+
     return lines.length === 0 ? "{}" : `{\n${lines.map(indent).join("\n")}\n}`;
   };
 
@@ -112,20 +123,26 @@ export const generate = (tree: OptionTree, options: GenerateOptions): Generated 
     if (option.id === null || !referenced.has(option.id) || option.type.optionRef !== undefined) {
       return typeOf(option.type, path);
     }
+
     const name = reserve(pascal(path));
     const outer = optionAliases.get(option.id);
     optionAliases.set(option.id, name);
     declarations.push(`export type ${name} = ${typeOf(option.type, path)}`);
+
     if (outer === undefined) optionAliases.delete(option.id);
     else optionAliases.set(option.id, outer);
+
     return name;
   };
 
   const typeOf = (type: NixType, path: ReadonlyArray<string>): string => {
     if (type.truncated === true) return "NixValue";
+
     if (type.classRef !== undefined) return classes.get(type.classRef) ?? "NixValue";
+
     if (type.optionRef !== undefined) return optionAliases.get(type.optionRef) ?? "NixValue";
     const nested = type.nested ?? {};
+
     const inner = (key: string) =>
       nested[key] === undefined ? "NixValue" : typeOf(nested[key], path);
 
@@ -181,10 +198,12 @@ export const generate = (tree: OptionTree, options: GenerateOptions): Generated 
       case "lazyAttrsOf":
       case "attrsWith": {
         const known = options.names?.get(path.join("."));
+
         return known === undefined
           ? composite(path, `{ readonly [name: string]: ${inner("elemType")} }`)
           : `{ readonly [K in ${known}]?: ${inner("elemType")} }`;
       }
+
       case "oneOf":
         return composite(
           path,
@@ -215,26 +234,32 @@ export const generate = (tree: OptionTree, options: GenerateOptions): Generated 
       case "submodule": {
         // `freeformType` types all undeclared attributes together, usually as `attrsOf value`.
         const freeformType = nested.freeformType;
+
         const freeformValue =
           freeformType?.nested?.elemType !== undefined &&
           /^(lazyA|a)ttrs(Of|With)$/.test(freeformType.name)
             ? freeformType.nested.elemType
             : freeformType;
+
         const freeform = freeformValue === undefined ? undefined : typeOf(freeformValue, path);
+
         if (type.class !== undefined && !classes.has(type.class)) {
           const name = reserve(`${pascal([type.class])}Options`);
           classes.set(type.class, name);
           declarations.push(
             `export interface ${name} ${objectBody(type.options ?? {}, [type.class], type.options ?? {}, freeform)}`,
           );
+
           return name;
         }
+
         return hoist(
           "interface",
           path,
           objectBody(type.options ?? {}, path, type.options ?? {}, freeform),
         );
       }
+
       default:
         return `Unsupported<${JSON.stringify(type.name)}>`;
     }
@@ -245,6 +270,7 @@ export const generate = (tree: OptionTree, options: GenerateOptions): Generated 
   declarations.unshift(`export interface ${root} ${objectBody(tree, [], tree)}`);
 
   const registering = [...classes].filter(([moduleClass]) => !options.registered?.has(moduleClass));
+
   return {
     source: declarationFile({
       origin: "a probed option tree",
@@ -271,6 +297,7 @@ export const declarationFile = (file: DeclarationFile): string => {
   // A project may check generated files with `noUnusedLocals`, so they import only what the types
   // use; option descriptions may mention the same words.
   const code = body.replaceAll(/\/\*\*[\s\S]*?\*\//g, "");
+
   const imports = [
     "NixFunction",
     "NixPath",
@@ -279,6 +306,7 @@ export const declarationFile = (file: DeclarationFile): string => {
     "Register",
     "Unsupported",
   ].filter((name) => new RegExp(`\\b${name}\\b`).test(code));
+
   return [
     `// Generated by Typeflake from ${file.origin}. Do not edit.`,
     ...(imports.length === 0
@@ -298,23 +326,29 @@ export const declarationFile = (file: DeclarationFile): string => {
 
 const referencedOptions = (tree: OptionTree): ReadonlySet<string> => {
   const ids = new Set<string>();
+
   const visitType = (type: NixType): void => {
     if (type.optionRef !== undefined) ids.add(type.optionRef);
     Object.values(type.nested ?? {}).forEach(visitType);
     type.alternatives?.forEach(visitType);
+
     if (type.options !== undefined) visitTree(type.options);
   };
+
   const visitTree = (tree: OptionTree): void =>
     Object.values(tree).forEach((node) =>
       isGroup(node) ? visitTree(node.group) : visitType(node.type),
     );
+
   visitTree(tree);
+
   return ids;
 };
 
 /** The path a renamed option's alias points at, from its description `Alias of {option}\`a.b\`.` */
 const renamedTo = (option: NixOption): ReadonlyArray<string> | undefined => {
   const match = /^Alias of \{option\}`(.+)`\.$/.exec(option.description?.trim() ?? "");
+
   return match?.[1] === undefined ? undefined : optionPath(match[1]);
 };
 
@@ -328,10 +362,15 @@ const optionPath = (shown: string): ReadonlyArray<string> =>
 const find = (tree: OptionTree, path: ReadonlyArray<string>): NixOption | undefined => {
   const [head, ...rest] = path;
   const node = head === undefined ? undefined : tree[head];
+
   if (node === undefined) return undefined;
+
   if (isGroup(node)) return rest.length === 0 ? undefined : find(node.group, rest);
+
   if (node.visible === false) return undefined;
+
   if (rest.length === 0) return node;
+
   return node.type.options === undefined ? undefined : find(node.type.options, rest);
 };
 
@@ -343,7 +382,9 @@ const doc = (option: NixOption): string => {
       ? []
       : [`@deprecated ${option.deprecated.replaceAll("\n", " ")}`]),
   ];
+
   if (lines.length === 0) return "";
+
   return `/**\n${lines.map((line) => ` * ${line.replaceAll("*/", "*\\/")}`.trimEnd()).join("\n")}\n */\n`;
 };
 
@@ -364,6 +405,7 @@ const pascal = (path: ReadonlyArray<string>): string => {
         .flatMap((word) => (word === "" ? [] : [word.charAt(0).toUpperCase() + word.slice(1)])),
     )
     .join("");
+
   return /^[0-9]/.test(name) ? `_${name}` : name || "Root";
 };
 
@@ -375,16 +417,20 @@ export interface Rename {
 /** The renamed options of a configuration, outside submodules, whose new option exists. */
 export const renames = (tree: OptionTree): ReadonlyArray<Rename> => {
   const found: Array<Rename> = [];
+
   const visit = (node: OptionTree, path: ReadonlyArray<string>): void => {
     for (const [key, child] of Object.entries(node)) {
       if (isGroup(child)) visit(child.group, [...path, key]);
       else if (child.visible === false) {
         const to = renamedTo(child);
+
         if (to !== undefined && find(tree, to) !== undefined)
           found.push({ from: [...path, key], to });
       }
     }
   };
+
   visit(tree, []);
+
   return found;
 };

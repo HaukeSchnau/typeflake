@@ -28,7 +28,9 @@ const Locked = Schema.fromJsonString(
 const probe = (module: string) => {
   const { owner, repo, rev, narHash } = Schema.decodeSync(Locked)(readFileSync(lockFile, "utf8"))
     .nodes.nixpkgs.locked;
+
   const nixpkgs = `builtins.fetchTree { type = "github"; owner = "${owner}"; repo = "${repo}"; rev = "${rev}"; narHash = "${narHash}"; }`;
+
   const json = execFileSync(
     "nix",
     [
@@ -40,6 +42,7 @@ const probe = (module: string) => {
     ],
     { encoding: "utf8" },
   );
+
   return Effect.runSync(decodeOptionTree(json));
 };
 
@@ -50,6 +53,7 @@ describe("probe.nix", { timeout: 120_000 }, () => {
       options.fine = lib.mkOption { type = lib.types.bool; };
       options.broken = lib.mkOption { type = throw "needs pkgs"; };
     }`);
+
     expect(tree["fine"]).toMatchObject({ type: { name: "bool" } });
     expect(tree["broken"]).toMatchObject({ type: { name: "unknown", truncated: true } });
   });
@@ -63,6 +67,7 @@ describe("probe.nix", { timeout: 120_000 }, () => {
         });
       };
     }`);
+
     expect(tree["users"]).toMatchObject({
       type: {
         nested: {

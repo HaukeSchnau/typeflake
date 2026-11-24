@@ -28,10 +28,12 @@ const run = (command: string, args: ReadonlyArray<string>, cwd: string) =>
     Effect.gen(function* () {
       const spawner = yield* ChildProcessSpawner.ChildProcessSpawner;
       const handle = yield* spawner.spawn(ChildProcess.make(command, args, { cwd }));
+
       const [stdout, stderr, exitCode] = yield* Effect.all(
         [text(handle.stdout), text(handle.stderr), handle.exitCode],
         { concurrency: "unbounded" },
       );
+
       return { exitCode, output: `${stdout}${stderr}` };
     }),
   );
@@ -64,9 +66,12 @@ const changes = (before: string, after: string) =>
   Effect.gen(function* () {
     const decode = Schema.decodeEffect(Lock);
     const [old, next] = [yield* decode(before), yield* decode(after)];
+
     return Object.entries(next.nodes).flatMap(([input, node]): ReadonlyArray<Change> => {
       const previous = old.nodes[input]?.locked;
+
       if (node.locked?.rev === previous?.rev) return [];
+
       return [
         {
           input,
@@ -93,7 +98,9 @@ const diagnostics = (output: string): ReadonlyArray<Diagnostic> =>
     ),
   ].flatMap(({ groups = {} }) => {
     const { file, line, column, code, message } = groups;
+
     if (file === undefined || code === undefined || message === undefined) return [];
+
     return [{ file, line: Number(line), column: Number(column), code, message }];
   });
 
@@ -108,6 +115,7 @@ const check = (root: string, directory: string, modules: ReadonlyArray<string>) 
     const path = yield* Path.Path;
     const relative = (file: string) => path.relative(directory, path.join(root, file));
     const generated = (yield* fs.readDirectory(directory)).filter((file) => file.endsWith(".ts"));
+
     const files = [
       ...modules.map(relative),
       ...generated,
@@ -117,6 +125,7 @@ const check = (root: string, directory: string, modules: ReadonlyArray<string>) 
         .filter((file) => file.endsWith(".ts"))
         .map((file) => `files/${file}`),
     ];
+
     yield* fs.writeFileString(
       path.join(directory, "tsconfig.json"),
       JSON.stringify(
@@ -129,14 +138,18 @@ const check = (root: string, directory: string, modules: ReadonlyArray<string>) 
         2,
       ),
     );
+
     // tsrs reports what tsc does, with less than half the memory on generated declarations.
     const installed = yield* Effect.filter(["tsrs", "tsc"], (name) =>
       fs.exists(path.join(root, "node_modules/.bin", name)),
     );
+
     const checker =
       installed[0] === undefined ? "tsc" : path.join(root, "node_modules/.bin", installed[0]);
+
     const { output } = yield* run(checker, ["-p", directory, "--pretty", "false"], root);
     yield* fs.remove(path.join(directory, "tsconfig.json"));
+
     // Paths come out relative to the root, where the checker runs.
     return diagnostics(output).filter((found) => !found.file.includes(".typeflake"));
   });
@@ -150,10 +163,13 @@ interface Occurrence {
 
 const keyName = (property: ObjectExpression["properties"][number]): string | undefined => {
   if (property.type !== "Property") return undefined;
+
   if (property.key.type === "Identifier" && !property.computed) return property.key.name;
+
   // A quoted key's raw text is a string literal, `"x-y"`, whose value is the name.
   if (property.key.type === "Literal" && /^["']/.test(property.key.raw ?? ""))
     return String(property.key.value);
+
   return undefined;
 };
 
@@ -165,16 +181,20 @@ const keyName = (property: ObjectExpression["properties"][number]): string | und
 const occurrences = (source: string): ReadonlyArray<Occurrence> => {
   const { program } = parseSync("module.ts", source);
   const found: Array<Occurrence> = [];
+
   const visit = (node: Node | null | undefined, path: ReadonlyArray<string>): void => {
     if (node === null || node === undefined) return;
+
     switch (node.type) {
       case "ObjectExpression":
         for (const property of node.properties) {
           const name = keyName(property);
+
           if (name === undefined || property.type !== "Property") continue;
           found.push({ path: [...path, name], start: property.key.start, end: property.key.end });
           visit(property.value, [...path, name]);
         }
+
         return;
       case "CallExpression":
         return node.arguments.forEach((argument) => visit(argument, path));
@@ -182,6 +202,7 @@ const occurrences = (source: string): ReadonlyArray<Occurrence> => {
         return node.elements.forEach((element) => visit(element, path));
       case "ConditionalExpression":
         visit(node.consequent, path);
+
         return visit(node.alternate, path);
       case "ParenthesizedExpression":
       case "TSAsExpression":
@@ -196,11 +217,13 @@ const occurrences = (source: string): ReadonlyArray<Occurrence> => {
         return visit(node.argument, path);
       case "IfStatement":
         visit(node.consequent, path);
+
         return visit(node.alternate, path);
       default:
         return;
     }
   };
+
   // `X.module({ config })`: the module's definitions start at the configuration's root.
   new Visitor({
     CallExpression: (node) => {
@@ -211,12 +234,15 @@ const occurrences = (source: string): ReadonlyArray<Occurrence> => {
       )
         return;
       const [definitions] = node.arguments;
+
       if (definitions?.type !== "ObjectExpression") return;
+
       for (const property of definitions.properties)
         if (property.type === "Property" && keyName(property) === "config")
           visit(property.value, []);
     },
   }).visit(program);
+
   return found;
 };
 
@@ -245,12 +271,16 @@ export interface Rewritten {
 /** Finds the renamed options a module's source sets, and rewrites the keys `--fix` can. */
 export const rewrite = (source: string, list: ReadonlyArray<Rename>): Rewritten => {
   const byPath = new Map(list.map((rename) => [rename.from.join("."), rename]));
+
   const hits = occurrences(source).flatMap((occurrence) => {
     const rename = byPath.get(occurrence.path.join("."));
+
     return rename === undefined ? [] : [{ occurrence, rename }];
   });
+
   const found = hits.map(({ occurrence, rename }) => {
     const before = source.slice(0, occurrence.start).split("\n");
+
     return {
       line: before.length,
       column: (before.at(-1)?.length ?? 0) + 1,
@@ -258,6 +288,7 @@ export const rewrite = (source: string, list: ReadonlyArray<Rename>): Rewritten 
       fixable: sameParent(rename),
     };
   });
+
   // From the end, so earlier offsets stay valid.
   const fixed = hits
     .filter(({ rename }) => sameParent(rename))
@@ -267,6 +298,7 @@ export const rewrite = (source: string, list: ReadonlyArray<Rename>): Rewritten 
         `${text.slice(0, occurrence.start)}${identifier(rename.to.at(-1) ?? "")}${text.slice(occurrence.end)}`,
       source,
     );
+
   return { found, fixed };
 };
 
@@ -281,13 +313,16 @@ const renamed = (
     const fs = yield* FileSystem.FileSystem;
     const path = yield* Path.Path;
     const found: Array<Renamed> = [];
+
     for (const module of modules) {
       const file = path.join(root, module);
       const source = yield* fs.readFileString(file);
       const result = rewrite(source, list);
       found.push(...result.found.map((hit) => ({ ...hit, file: module })));
+
       if (fix && result.fixed !== source) yield* fs.writeFileString(file, result.fixed);
     }
+
     return found;
   });
 
@@ -324,6 +359,7 @@ export const bump = (options: Options) =>
     yield* fs.remove(next, { recursive: true }).pipe(Effect.ignore);
     yield* fs.makeDirectory(next, { recursive: true });
     const lockFile = path.join(next, "flake.lock");
+
     const update = yield* run(
       "nix",
       [
@@ -337,6 +373,7 @@ export const bump = (options: Options) =>
       ],
       root,
     );
+
     if (update.exitCode !== 0)
       return yield* UpdateFailed.make({ command: "nix flake update", output: update.output });
 
@@ -347,27 +384,34 @@ export const bump = (options: Options) =>
     const changed = yield* changes(currentLock, nextLock);
     const modules = yield* Project.moduleFiles(root);
     const before = yield* check(root, path.join(root, ".typeflake"), modules);
+
     const { renames } = yield* Project.types(root, options.flake, options.configurations, {
       lockFile,
       outDir: ".typeflake/next",
     });
+
     const known = new Set(
       before.map((found) => `${found.file}:${found.line}:${found.code}:${found.message}`),
     );
+
     const errors = (yield* check(root, next, modules)).filter(
       (found) => !known.has(`${found.file}:${found.line}:${found.code}:${found.message}`),
     );
+
     const found = yield* renamed(root, modules, renames, options.fix);
 
     const applied = options.apply && errors.length === 0;
+
     if (applied) {
       yield* fs.copyFile(lockFile, current);
       yield* fs.remove(lockFile);
       const directory = path.join(root, ".typeflake");
       yield* fs.remove(path.join(directory, "files"), { recursive: true }).pipe(Effect.ignore);
+
       for (const entry of yield* fs.readDirectory(next))
         yield* fs.rename(path.join(next, entry), path.join(directory, entry));
       yield* fs.remove(next, { recursive: true });
     }
+
     return { changes: changed, errors, renamed: found, applied } satisfies Report;
   });

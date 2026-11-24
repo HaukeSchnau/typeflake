@@ -34,6 +34,7 @@ const sources = [
 
 const template = (source: string) => {
   const strings = source.split("${v}");
+
   return Nix.nix(Object.assign([...strings], { raw: strings }), ...strings.slice(1).map(() => v));
 };
 
@@ -41,9 +42,11 @@ describe("nix", () => {
   it("dedents like Nix's '' strings", () => {
     const ours = sources.map((source) => Ast.print(Nix.exprOf(template(source))).trim());
     const theirs = sources.map((source) => `''${source}''`);
+
     const [left, right] = evaluatePair(
       `let v = "@"; in [ [ ${ours.map((code) => `(${code})`).join(" ")} ] [ ${theirs.map((code) => `(${code})`).join(" ")} ] ]`,
     );
+
     expect(left).toEqual(right);
   });
 
@@ -54,6 +57,7 @@ describe("nix", () => {
         overrides: { readonly [name: string]: Nix.NixValue },
       ) => Nix.Nix<Nix.Package>;
     }>(Ast.variable("pkgs"));
+
     const secrets = Nix.proxy<{ readonly "app-store-connect/api-key": { readonly path: string } }>(
       Ast.select(Ast.variable("config"), "secrets"),
     );

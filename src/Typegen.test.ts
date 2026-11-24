@@ -93,6 +93,7 @@ describe("generate", () => {
         ),
       },
     };
+
     const source = generateNixos({ content: option(content, "luks.nix:5:3#content") });
 
     expect(source).toContain("export type Content = Content2");

@@ -45,6 +45,7 @@ const flatten = (graph: Graph): Tree => {
   const leaf: Array<number> = [];
   const depth: Array<number> = [];
   const fade: Array<number> = [];
+
   const visit = (node: GraphNode, up: number, level: number, dim: number): number => {
     const index = names.length;
     const [name, second, third] = node;
@@ -59,12 +60,16 @@ const flatten = (graph: Graph): Tree => {
     end.push(0);
     const childDim = dim * Math.min(1, Math.sqrt(crowd / Math.max(1, children.length)));
     let count = children.length === 0 ? 1 : 0;
+
     for (const child of children) count += visit(child, index, level + 1, childDim);
     options[index] = count;
     end[index] = names.length;
+
     return count;
   };
+
   visit(["", graph.tree], -1, 0, 1);
+
   return {
     count: names.length,
     names,
@@ -93,12 +98,14 @@ const layOut = (tree: Tree): Arm => {
   const y0 = new Float32Array(tree.count);
   const x1 = new Float32Array(tree.count);
   const y1 = new Float32Array(tree.count);
+
   const place = (node: number, x: number, y: number, angle: number, length: number): void => {
     x0[node] = x;
     y0[node] = y;
     x1[node] = x + Math.cos(angle) * length;
     y1[node] = y + Math.sin(angle) * length;
     const children: Array<number> = [];
+
     for (let child = node + 1; child < (tree.end[node] ?? 0); child = tree.end[child] ?? child + 1)
       children.push(child);
     const total = children.reduce((sum, child) => sum + weightOf(tree, child), 0);
@@ -109,10 +116,12 @@ const layOut = (tree: Tree): Arm => {
       before += share;
       const side = i % 2 === 0 ? 1 : -1;
       const ratio = (tree.options[child] ?? 1) / (tree.options[node] ?? 1);
+
       const childLength =
         tree.leaf[child] === 1
           ? Math.min(length * 0.3, 0.009)
           : length * shrink * Math.max(shortest, ratio ** lengthExponent);
+
       place(
         child,
         x + Math.cos(angle) * length * along,
@@ -122,13 +131,16 @@ const layOut = (tree: Tree): Arm => {
       );
     });
   };
+
   place(0, 0, 0, 0, 1);
+
   return { x0, y0, x1, y1 };
 };
 
 const alphaOf = (tree: Tree, node: number): number =>
   (tree.leaf[node] === 1 ? 0.25 : Math.max(0.05, 0.6 - (tree.depth[node] ?? 0) * 0.07)) *
   (tree.fade[node] ?? 1);
+
 const widthOf = (tree: Tree, node: number, scale: number): number =>
   (tree.leaf[node] === 1 ? 0.45 : Math.max(0.35, 1.9 - (tree.depth[node] ?? 0) * 0.32)) * scale;
 
@@ -176,6 +188,7 @@ export const mountFlake = async (
   // Every segment goes into the grid cells along it, so pointing near a branch finds it.
   const index = () => {
     grid = new Map();
+
     for (let node = 0; node < tree.count; node++) {
       const ax = (arm.x0[node] ?? 0) * radius;
       const ay = (arm.y0[node] ?? 0) * radius;
@@ -183,11 +196,14 @@ export const mountFlake = async (
       const by = (arm.y1[node] ?? 0) * radius;
       const steps = Math.max(1, Math.ceil(Math.hypot(bx - ax, by - ay) / (cell / 2)));
       const seen = new Set<number>();
+
       for (let step = 0; step <= steps; step++) {
         const k = key(ax + ((bx - ax) * step) / steps, ay + ((by - ay) * step) / steps);
+
         if (seen.has(k)) continue;
         seen.add(k);
         const bucket = grid.get(k);
+
         if (bucket === undefined) grid.set(k, [node]);
         else bucket.push(node);
       }
@@ -199,45 +215,57 @@ export const mountFlake = async (
     size = Math.round(box.width);
     ratio = Math.min(window.devicePixelRatio || 1, 2);
     radius = size * 0.47;
+
     for (const target of [canvas, overlay, lines]) {
       target.width = Math.round(size * ratio);
       target.height = Math.round(size * ratio);
     }
+
     glow.width = Math.max(1, Math.round((size * ratio) / 6));
     glow.height = glow.width;
 
     // Segments of one color and width share a path, so each copy strokes a few dozen paths.
     const scale = size / 720;
     const buckets = new Map<string, { alpha: number; width: number; path: Path2D }>();
+
     for (let node = 0; node < tree.count; node++) {
       const alpha = Math.round(alphaOf(tree, node) * 60) / 60;
+
       if (alpha <= 0) continue;
       const width = Math.round(widthOf(tree, node, scale) * 8) / 8;
       const id = `${alpha}:${width}`;
       let bucket = buckets.get(id);
+
       if (bucket === undefined) {
         bucket = { alpha, width, path: new Path2D() };
         buckets.set(id, bucket);
       }
+
       bucket.path.moveTo((arm.x0[node] ?? 0) * radius, (arm.y0[node] ?? 0) * radius);
       bucket.path.lineTo((arm.x1[node] ?? 0) * radius, (arm.y1[node] ?? 0) * radius);
     }
+
     const context = lines.getContext("2d");
+
     if (context === null) return;
     context.globalCompositeOperation = "lighter";
     context.lineCap = "round";
+
     for (const copy of copies) {
       context.setTransform(ratio, 0, 0, ratio, (size * ratio) / 2, (size * ratio) / 2);
       context.rotate(copy.angle);
       context.scale(1, copy.mirror);
+
       for (const { alpha, width, path } of buckets.values()) {
         context.strokeStyle = `rgba(${frost}, ${alpha})`;
         context.lineWidth = width;
         context.stroke(path);
       }
     }
+
     // A blur without `filter`, which Safari's canvas lacks: shrink the lines and stretch them back.
     const soft = glow.getContext("2d");
+
     if (soft === null) return;
     soft.imageSmoothingQuality = "high";
     soft.drawImage(lines, 0, 0, glow.width, glow.height);
@@ -246,10 +274,12 @@ export const mountFlake = async (
 
   const compose = (reveal: number) => {
     const context = canvas.getContext("2d");
+
     if (context === null) return;
     context.setTransform(1, 0, 0, 1, 0, 0);
     context.clearRect(0, 0, canvas.width, canvas.height);
     context.save();
+
     if (reveal < 1) {
       context.beginPath();
       context.arc(
@@ -261,6 +291,7 @@ export const mountFlake = async (
       );
       context.clip();
     }
+
     context.globalCompositeOperation = "lighter";
     context.imageSmoothingQuality = "high";
     context.globalAlpha = 0.75;
@@ -271,45 +302,58 @@ export const mountFlake = async (
   };
 
   draw();
+
   // The flake grows once from its center, the way the crystal would.
   if (matchMedia("(prefers-reduced-motion: reduce)").matches) compose(1);
   else {
     const start = performance.now();
+
     const grow = (now: number) => {
       // A frame's timestamp can precede the `performance.now()` taken before it was requested.
       const t = Math.min(1, Math.max(0, (now - start) / 1600));
       compose(1 - (1 - t) ** 3);
+
       if (t < 1) requestAnimationFrame(grow);
     };
+
     requestAnimationFrame(grow);
   }
 
   let lit: number | undefined;
+
   const light = (node: number | undefined) => {
     lit = node;
     const context = overlay.getContext("2d");
+
     if (context === null) return;
     context.setTransform(1, 0, 0, 1, 0, 0);
     context.clearRect(0, 0, overlay.width, overlay.height);
+
     if (node === undefined) return;
     const chain: Array<number> = [];
+
     for (let up = node; up > 0; up = tree.parent[up] ?? 0) chain.push(up);
     const below = (tree.end[node] ?? node + 1) - node;
     context.lineCap = "round";
+
     for (const copy of copies) {
       context.setTransform(ratio, 0, 0, ratio, (size * ratio) / 2, (size * ratio) / 2);
       context.rotate(copy.angle);
       context.scale(1, copy.mirror);
+
       const segment = (n: number) => {
         context.moveTo((arm.x0[n] ?? 0) * radius, (arm.y0[n] ?? 0) * radius);
         context.lineTo((arm.x1[n] ?? 0) * radius, (arm.y1[n] ?? 0) * radius);
       };
+
       context.beginPath();
+
       for (let n = node + 1; n < node + below; n++) segment(n);
       context.strokeStyle = "rgba(255, 255, 255, 0.55)";
       context.lineWidth = 0.7;
       context.stroke();
       context.beginPath();
+
       for (const n of chain) segment(n);
       context.strokeStyle = "rgba(255, 255, 255, 0.95)";
       context.lineWidth = 1.6;
@@ -329,14 +373,17 @@ export const mountFlake = async (
     const box = canvas.getBoundingClientRect();
     const px = clientX - box.left - box.width / 2;
     const py = clientY - box.top - box.height / 2;
+
     if (Math.hypot(px, py) > radius * 1.05) return undefined;
     let best: number | undefined;
     let bestDistance = 8;
+
     for (const copy of copies) {
       const cos = Math.cos(-copy.angle);
       const sin = Math.sin(-copy.angle);
       const x = px * cos - py * sin;
       const y = (px * sin + py * cos) * copy.mirror;
+
       for (let dx = -1; dx <= 1; dx++) {
         for (let dy = -1; dy <= 1; dy++) {
           for (const node of grid.get(key(x + dx * cell, y + dy * cell)) ?? []) {
@@ -345,11 +392,14 @@ export const mountFlake = async (
             const bx = (arm.x1[node] ?? 0) * radius;
             const by = (arm.y1[node] ?? 0) * radius;
             const length = (bx - ax) ** 2 + (by - ay) ** 2;
+
             const t =
               length === 0
                 ? 0
                 : Math.max(0, Math.min(1, ((x - ax) * (bx - ax) + (y - ay) * (by - ay)) / length));
+
             const distance = Math.hypot(x - ax - t * (bx - ax), y - ay - t * (by - ay));
+
             if (distance < bestDistance) {
               bestDistance = distance;
               best = node;
@@ -358,6 +408,7 @@ export const mountFlake = async (
         }
       }
     }
+
     return best;
   };
 
@@ -365,6 +416,7 @@ export const mountFlake = async (
   canvas.addEventListener("pointermove", (event) => {
     if (event.pointerType !== "mouse") return;
     const node = nearest(event.clientX, event.clientY) ?? pinned;
+
     if (node === lit) return;
     light(node);
     onPoint(node, node === pinned);
@@ -392,30 +444,41 @@ export const mountFlake = async (
 
   const pathOf = (node: number): string => {
     const names: Array<string> = [];
+
     for (let up = node; up > 0; up = tree.parent[up] ?? 0) names.push(tree.names[up] ?? "");
+
     return names.toReversed().join(".");
   };
+
   const format = new Intl.NumberFormat("en");
+
   const describe = (node: number): string => {
     const type = tree.type[node] ?? -1;
     const count = tree.options[node] ?? 0;
     const inside = `${format.format(count)} ${count === 1 ? "option" : "options"}`;
+
     if (type === -1) return inside;
     const typed = data.types[type] ?? "";
+
     return tree.leaf[node] === 1 ? typed : `${typed}, ${inside} inside`;
   };
 
   let paths: ReadonlyArray<string> | undefined;
+
   const search = (query: string): ReadonlyArray<number> => {
     const needle = query.trim().toLowerCase();
+
     if (needle === "") return [];
     paths ??= Array.from({ length: tree.count }, (_, node) => pathOf(node).toLowerCase());
     const found: Array<number> = [];
+
     for (let node = 1; node < tree.count; node++) {
       if ((paths[node] ?? "").includes(needle)) found.push(node);
     }
+
     // Names that are the query come first, then the shortest paths.
     const exact = (node: number) => ((tree.names[node] ?? "").toLowerCase() === needle ? 0 : 1);
+
     return found
       .toSorted(
         (a, b) => exact(a) - exact(b) || (paths?.[a]?.length ?? 0) - (paths?.[b]?.length ?? 0),

@@ -32,10 +32,13 @@ const render = Command.make(
   ({ root, check }) =>
     Effect.gen(function* () {
       const rendered = yield* Project.renderAll(root);
+
       if (check) {
         yield* Project.check(root, rendered);
+
         return yield* Console.log(`${rendered.length} rendered files are up to date`);
       }
+
       yield* Project.write(root, rendered);
       yield* Console.log(
         rendered.map(({ file }) => `rendered ${file}`).join("\n") || "no *.nix.ts modules found",
@@ -96,6 +99,7 @@ const bump = Command.make(
   ({ root, flake, input, fix, apply, configurations }) =>
     Effect.gen(function* () {
       const report = yield* Bump.bump({ root, flake, configurations, inputs: input, fix, apply });
+
       const lines = [
         report.changes.length === 0
           ? "No input changes."
@@ -129,7 +133,9 @@ const bump = Command.make(
             ? "Kept flake.lock: fix the errors first. The new types are in .typeflake/next/."
             : "Nothing changed. Run again with --apply to update flake.lock and .typeflake/.",
       ];
+
       yield* Console.log(lines.join("\n"));
+
       if (report.errors.length > 0) return yield* BumpBreaks.make({});
     }),
 ).pipe(
@@ -152,9 +158,11 @@ const PackageJson = Schema.fromJsonString(Schema.Struct({ version: Schema.String
 
 Effect.gen(function* () {
   const fs = yield* FileSystem.FileSystem;
+
   const packageJson = yield* fs.readFileString(
     new URL("../package.json", import.meta.url).pathname,
   );
+
   const { version } = yield* Schema.decodeEffect(PackageJson)(packageJson);
   yield* Command.run(
     Command.make("typeflake").pipe(Command.withSubcommands([render, types, bump])),

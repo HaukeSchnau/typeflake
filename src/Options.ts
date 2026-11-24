@@ -21,6 +21,7 @@ export type Infer<D> = {
 
 const variance = { _A: (_: never) => _ };
 const lib = Ast.variable("lib");
+
 const declare = <A>(fn: string, argument: Ast.Expr): Declaration<A> => ({
   ...Nix.make<unknown>(Ast.apply(Ast.select(lib, fn), argument)),
   [DeclarationId]: variance,
@@ -43,10 +44,12 @@ export interface MakeOptions<A> {
 export const make = <A>(options: MakeOptions<A>): Declaration<A> => {
   const { defaultText, ...rest } = options;
   const fields = Nix.toExpr(rest);
+
   const text = Ast.apply(
     Ast.select(lib, "literalExpression"),
     Ast.string([Ast.text(defaultText ?? "")]),
   );
+
   return declare(
     "mkOption",
     defaultText === undefined || fields._tag !== "Attrs"

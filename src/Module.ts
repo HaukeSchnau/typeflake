@@ -63,6 +63,7 @@ type YieldedError<Eff> = [Eff] extends [never]
   : [Eff] extends [Effect.Effect<infer _A, infer E, infer _R>]
     ? E
     : never;
+
 type YieldedServices<Eff> = [Eff] extends [never]
   ? never
   : [Eff] extends [Effect.Effect<infer _A, infer _E, infer R>]
@@ -71,8 +72,10 @@ type YieldedServices<Eff> = [Eff] extends [never]
 
 /** The order modules conventionally list their arguments in; others follow alphabetically. */
 const conventional = ["config", "options", "lib", "pkgs", "modulesPath"];
+
 const rank = (name: string) =>
   conventional.includes(name) ? conventional.indexOf(name) : conventional.length;
+
 const byConvention = (left: string, right: string) =>
   rank(left) - rank(right) || left.localeCompare(right);
 
@@ -107,6 +110,7 @@ export const make =
   ): Module<Class, YieldedError<Eff>, YieldedServices<Eff>> => {
     const render = Effect.gen(function* () {
       const made = definitions.config;
+
       // An expression is a callable proxy, so only a function that isn't one makes the definitions.
       const result =
         Predicate.isFunction(made) && !Nix.isNix(made)
@@ -115,8 +119,10 @@ export const make =
             // oxlint-disable-next-line typescript/no-unsafe-type-assertion
             made(args as Args<OptionsOf<Class> & Infer<D>>)
           : made;
+
       const config = Nix.toExpr(isGenerator(result) ? yield* Effect.gen(() => result) : result);
       const { imports = [], options } = definitions;
+
       const body =
         imports.length === 0 && options === undefined && config._tag === "Attrs"
           ? config
@@ -125,8 +131,10 @@ export const make =
               ...(options === undefined ? [] : [["options", Nix.toExpr(options)] as const]),
               ["config", config],
             ]);
+
       return Ast.print(Ast.lambda([...Ast.freeVariables(body)].toSorted(byConvention), body));
     });
+
     return {
       [TypeId]: { _E: (_) => _, _R: (_) => _ },
       class: moduleClass,

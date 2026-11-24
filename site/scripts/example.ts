@@ -136,11 +136,13 @@ interface ProbeType {
   readonly alternatives?: ReadonlyArray<ProbeType>;
   readonly options?: ProbeTree;
 }
+
 interface ProbeOption {
   readonly visible: boolean | "shallow";
   readonly internal: boolean;
   readonly type: ProbeType;
 }
+
 interface ProbeTree {
   readonly [name: string]: { readonly group: ProbeTree } | ProbeOption;
 }
@@ -160,9 +162,12 @@ const probed: ProbeTree = JSON.parse(
 const display = (type: ProbeType): string => {
   const inner = (key: string) => {
     const nested = type.nested?.[key];
+
     return nested === undefined ? "NixValue" : display(nested);
   };
+
   if (type.truncated === true) return "NixValue";
+
   switch (type.name.split(" ")[0]) {
     case "bool":
     case "boolByOr":
@@ -203,8 +208,10 @@ const display = (type: ProbeType): string => {
       return "Package";
     case "enum": {
       const values = (type.values ?? []).map((value) => JSON.stringify(value));
+
       return values.length > 5 ? `${values.slice(0, 4).join(" | ")} | …` : values.join(" | ");
     }
+
     case "nullOr":
       return `${inner("elemType")} | null`;
     case "listOf":
@@ -237,37 +244,48 @@ const display = (type: ProbeType): string => {
 const subOptions = (type: ProbeType): ProbeTree | undefined => {
   if (type.options !== undefined && Object.keys(type.options).length > 0) return type.options;
   const element = type.nested?.["elemType"];
+
   if (element !== undefined) return subOptions(element);
+
   for (const alternative of type.alternatives ?? []) {
     const found = subOptions(alternative);
+
     if (found !== undefined) return found;
   }
+
   return undefined;
 };
 
 const types: Array<string> = [];
 const typeIds = new Map<string, number>();
+
 const typeId = (type: ProbeType): number => {
   const text = display(type);
   const known = typeIds.get(text);
+
   if (known !== undefined) return known;
   typeIds.set(text, types.length);
   types.push(text);
+
   return types.length - 1;
 };
 
 let options = 0;
+
 const branch = (tree: ProbeTree): Array<GraphNode> =>
   Object.entries(tree)
     .toSorted(([left], [right]) => (left < right ? -1 : 1))
     .flatMap(([name, node]): Array<GraphNode> => {
       if ("group" in node) return [[name, branch(node.group)]];
+
       if (node.visible === false || node.internal) return [];
       options++;
       const sub = subOptions(node.type);
+
       if (sub === undefined) return [[name, typeId(node.type)]];
       // An attribute set or list of submodules holds them under a name the user picks.
       const children = branch(sub);
+
       return [
         [
           name,
@@ -276,12 +294,15 @@ const branch = (tree: ProbeTree): Array<GraphNode> =>
         ],
       ];
     });
+
 const tree = branch(probed);
 const graph: Graph = { options, types, tree };
+
 writeFileSync(join(site, "data/graph.json"), JSON.stringify(graph));
 
 // 3. Every mistake in one program, as copies of the module next to the original.
 const dir = mkdtempSync(join(tmpdir(), "typeflake-example-"));
+
 try {
   cpSync(example, dir, { recursive: true });
   // The copy resolves `typeflake` and extends the repository's tsconfig from where it is.
@@ -297,12 +318,15 @@ try {
       extends: join(root, "tsconfig.json"),
     }),
   );
+
   const variants = edits.map((edit, i) => {
     const source = readFileSync(join(example, edit.file), "utf8");
+
     if (source.split(edit.find).length !== 2)
       throw new Error(`"${edit.find}" must occur exactly once in ${edit.file}`);
     const file = edit.file.replace(/\.nix\.ts$/, `.mistake-${i}.nix.ts`);
     writeFileSync(join(dir, file), source.replace(edit.find, edit.replace));
+
     return file;
   });
 
@@ -312,11 +336,15 @@ try {
       const result = spawnSync("time", ["-f", "%e %M", bin(compiler), "-p", example, "--noEmit"], {
         encoding: "utf8",
       });
+
       if (result.status !== 0) throw new Error(`the example has errors:\n${result.stdout}`);
+
       const [elapsed = "0", kilobytes = "0"] =
         result.stderr.trim().split("\n").at(-1)?.split(" ") ?? [];
+
       return { seconds: Number(elapsed), megabytes: Math.round(Number(kilobytes) / 1024) };
     });
+
     return {
       compiler,
       version: run(bin(compiler), ["--version"]).trim(),
@@ -329,6 +357,7 @@ try {
     spawnSync(bin("tsrs"), ["-p", ".", "--noEmit", "--pretty"], { cwd: dir, encoding: "utf8" })
       .stdout,
   );
+
   // `file:line:column - error TSnnnn: message`, continuation lines, then the line and its squiggle.
   const reports = [
     ...output.matchAll(
@@ -336,7 +365,9 @@ try {
     ),
   ].flatMap(({ groups = {} }) => {
     const { file, line, column, code, message, squiggle } = groups;
+
     if (file === undefined || message === undefined || squiggle === undefined) return [];
+
     return [
       {
         file,
@@ -351,15 +382,18 @@ try {
 
   const mistakes = edits.map((edit, i): Mistake => {
     const [report, ...more] = reports.filter((found) => found.file === variants[i]);
+
     if (report === undefined || more.length > 0)
       throw new Error(`expected one error for "${edit.label}":\n${output}`);
     const { label, file, find, replace } = edit;
     const { line, column, length, diagnostic, message } = report;
+
     return { label, file, find, replace, line, column, length, diagnostic, message };
   });
 
   const size = (configuration: string) =>
     statSync(join(example, ".typeflake", `${configuration}.ts`)).size;
+
   const result: Example = {
     measuredOn: new Date().toISOString().slice(0, 10),
     options,
@@ -381,6 +415,7 @@ try {
     drvPaths,
     mistakes,
   };
+
   writeFileSync(
     join(site, "data/example.ts"),
     `// Generated by scripts/example.ts. Do not edit.

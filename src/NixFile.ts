@@ -48,11 +48,14 @@ export const registerImports = (): void => {
         return next(specifier, context);
       const url = new URL(specifier, context.parentURL);
       url.searchParams.set(marker, specifier);
+
       return { url: url.href, format: "module", shortCircuit: true };
     },
     load: (url, context, next) => {
       const specifier = new URL(url).searchParams.get(marker);
+
       if (specifier === null) return next(url, context);
+
       // The import's specifier is the path from the module's file, which is also where the
       // rendered `.nix` file is.
       return {
