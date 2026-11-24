@@ -342,10 +342,9 @@ export const bump = (options: Options) =>
 
     // A flake given as `path:dir`, which a flake in a git checkout needs for untracked files.
     const current = path.join(root, options.flake.replace(/^path:/, ""), "flake.lock");
-    const changed = yield* changes(
-      yield* fs.readFileString(current),
-      yield* fs.readFileString(lockFile),
-    );
+    const currentLock = yield* fs.readFileString(current);
+    const nextLock = yield* fs.readFileString(lockFile);
+    const changed = yield* changes(currentLock, nextLock);
     const modules = yield* Project.moduleFiles(root);
     const before = yield* check(root, path.join(root, ".typeflake"), modules);
     const { renames } = yield* Project.types(root, options.flake, options.configurations, {

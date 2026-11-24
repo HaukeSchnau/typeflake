@@ -39,11 +39,12 @@ options and interpolate store paths into strings, and the prototype could expres
   their modules.
 - tsrs, Oxc's Rust port of the TypeScript 7 compiler, builds the package and checks the site and
   the example; `typeflake bump` uses it when a project has it. Its diagnostics and emit match tsc's
-  (the build's 38 files are byte-identical). On the example's 7.5 MB of generated declarations it
-  checks in 0.73 s with 146 MB, against tsc's 2.55 s and 354 MB. That diverges from the conventions, which take the native TS 7 compiler: both are
-  experimental, and so is Typeflake. `vp check` still type-checks through oxlint's own Go checker,
-  which also runs the Effect rules; tsrs doesn't load language service plugins, and the Effect
-  diagnostics come from a patch to the Go compiler. tsrs is a glibc binary, so NixOS needs
+  (of the build's 38 files, only `Project.js` differs from tsc 7.0's, by TypeScript 7.1's newer
+  `__rewriteRelativeImportExtension` helper). On the example's 7.5 MB of generated declarations,
+  tsrs 0.18 checked in 0.73 s with 146 MB, against tsc 7.0's 2.55 s and 354 MB
+  (`site/data/example.ts`). `vp check` type-checks with tsrs too, through `tsrs-lint`. tsrs
+  doesn't load language service plugins, so the Effect diagnostics come from
+  `effect-tsgo patch --tsrs`, which patches its binary. tsrs is a glibc binary, so NixOS needs
   `nix-ld` for it.
 
 A module, condensed from the port of infra's `modules/features/app-stores`:

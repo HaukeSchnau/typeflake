@@ -39,7 +39,7 @@
     "build": "tsrs -p tsconfig.build.json",
     "check": "vp check",
     "test": "vp test run",
-    "prepare": "effect-tsgo patch --oxlint && vp config --no-agent",
+    "prepare": "effect-tsgo patch --oxlint --tsrs && vp config --no-agent",
     "prepack": "pnpm build"
   },
   "dependencies": {
@@ -49,15 +49,13 @@
     "yaml": "^2.9.1"
   },
   "devDependencies": {
-    "@effect/tsgo": "^0.56.0",
+    "@effect/tsgo": "^0.73.4",
     "@effect/vitest": "^4.0.6",
-    "@oxlint/plugins": "1.89.0",
+    "@oxlint/plugins": "1.94.0",
     "@types/node": "^26.6.5",
-    "oxlint": "1.89.0",
-    "tsrs": "0.18.0-ts7.1.0-dev.20260929",
-    "typescript": "^7.0.2",
+    "tsrs": "7.1.0-beta.tsrs4",
     "vite": "^8.3.5",
-    "vite-plus": "^1.4.0"
+    "vite-plus": "^1.8.0"
   },
   "engines": {
     "node": ">=24"

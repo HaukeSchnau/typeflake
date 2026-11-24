@@ -150,7 +150,7 @@ export const write = (root: string, rendered: ReadonlyArray<Rendered>) =>
     yield* Effect.forEach(
       rendered,
       ({ file, source }) => fs.writeFileString(path.resolve(root, file), source),
-      { discard: true },
+      { concurrency: 1, discard: true },
     );
   });
 
@@ -261,20 +261,28 @@ export const types = (
       nixFiles: yield* nixFiles(root),
       modules: yield* moduleFiles(root),
     };
-    const expressions = yield* Effect.forEach(providers, (provider) =>
-      Effect.map(provider.nix(context), (nix) => [provider.name, nix] as const),
+    const expressions = yield* Effect.forEach(
+      providers,
+      (provider) => Effect.map(provider.nix(context), (nix) => [provider.name, nix] as const),
+      { concurrency: 1 },
     );
-    const probed = yield* Effect.forEach(configurations, (configuration) =>
-      Effect.flatMap(probe(flake, configuration, expressions, options), decodeProbed),
+    const probed = yield* Effect.forEach(
+      configurations,
+      (configuration) =>
+        Effect.flatMap(probe(flake, configuration, expressions, options), decodeProbed),
+      { concurrency: 1 },
     );
-    const provided = yield* Effect.forEach(providers, (provider) =>
-      provider.provide(
-        probed.flatMap(({ providers: found }) => {
-          const json = found[provider.name];
-          return json === undefined || json === null ? [] : [json];
-        }),
-        context,
-      ),
+    const provided = yield* Effect.forEach(
+      providers,
+      (provider) =>
+        provider.provide(
+          probed.flatMap(({ providers: found }) => {
+            const json = found[provider.name];
+            return json === undefined || json === null ? [] : [json];
+          }),
+          context,
+        ),
+      { concurrency: 1 },
     );
 
     const directory = path.resolve(root, options.outDir ?? ".typeflake");

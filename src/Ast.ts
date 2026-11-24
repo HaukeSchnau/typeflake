@@ -246,11 +246,7 @@ const printString = (parts: ReadonlyArray<Part>, indent: string): string => {
 };
 
 /** Nix reads `$${` as a literal `${`, so a `$` right before an interpolation needs escaping. */
-const dollarBeforeInterpolation = (
-  text: string,
-  next: Part | undefined,
-  escaped: string,
-): string =>
+const dollarBeforeInterpolation = (text: string, next: Part | undefined, escaped: string): string =>
   next !== undefined && next._tag !== "Text" && text.endsWith("$")
     ? `${text.slice(0, -1)}${escaped}`
     : text;

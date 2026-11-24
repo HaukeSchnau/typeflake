@@ -20,7 +20,14 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "skipLibCheck": true,
-    "plugins": [{ "name": "@effect/language-service" }]
+    "plugins": [
+      {
+        "name": "@effect/language-service",
+        // The `effecttsgo/unstable-api-usage` lint rule reports unstable Effect APIs outside the CLI's
+        // files, which vite.config.ts lists. The type checker would report them in every file.
+        "diagnosticSeverity": { "unstableApiUsage": "off" }
+      }
+    ]
   },
   "include": ["src", "*.ts"]
 }
