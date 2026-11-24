@@ -18,7 +18,7 @@
     "alchemy": "2.0.0-beta.85",
     "effect": "4.1.2",
     "shiki": "^4.5.0",
-    "tsrs": "0.18.0-ts7.1.0-dev.20260929",
+    "tsrs": "7.1.0-beta.tsrs4",
     "typeflake": "workspace:*",
     "typescript": "7.0.2",
     "vite": "^8.3.5"

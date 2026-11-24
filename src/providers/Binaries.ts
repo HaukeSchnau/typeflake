@@ -65,13 +65,12 @@ export const provider = Provider.make({
   schema: StorePaths,
   nix: (context) =>
     referenced(context).pipe(
-      Effect.map(
-        (names) =>
+      Effect.mapBoth({
+        onSuccess: (names) =>
           `configuration: let pkgs = configuration.pkgs or { }; in builtins.listToAttrs (builtins.concatMap (name: let path = builtins.tryEval (let value = pkgs.\${name}; in if builtins.isAttrs value && value ? outPath then toString value.outPath else null); in if path.success && path.value != null then [ { inherit name; value = path.value; } ] else [ ]) (builtins.filter (name: pkgs ? \${name}) ${Ast.print(Nix.toExpr(names)).trim()}))`,
-      ),
-      Effect.mapError((error) =>
-        Provider.ProviderFailed.make({ provider: "binaries", reason: String(error) }),
-      ),
+        onFailure: (error) =>
+          Provider.ProviderFailed.make({ provider: "binaries", reason: String(error) }),
+      }),
     ),
   combine: (left, right) => ({ ...right, ...left }),
   provide: (paths) =>

@@ -77,12 +77,15 @@ export const make = <A>(definition: Definition<A>): Provider => {
     nix: definition.nix,
     provide: (found, context) =>
       Effect.gen(function* () {
-        const decoded = yield* Effect.forEach(found, (json) =>
-          decode(json).pipe(
-            Effect.mapError((error) =>
-              ProviderFailed.make({ provider: definition.name, reason: String(error) }),
+        const decoded = yield* Effect.forEach(
+          found,
+          (json) =>
+            decode(json).pipe(
+              Effect.mapError((error) =>
+                ProviderFailed.make({ provider: definition.name, reason: String(error) }),
+              ),
             ),
-          ),
+          { concurrency: 1 },
         );
         const [first, ...rest] = decoded.filter((found) => found !== null);
         if (first === undefined) return nothing;

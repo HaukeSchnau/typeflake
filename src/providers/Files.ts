@@ -41,18 +41,19 @@ export const provider = Provider.make({
   schema: Found,
   nix: (context) =>
     imported(context).pipe(
-      Effect.map((files) => {
-        const paths = Ast.print(Nix.toExpr(files.map((file) => `${context.root}/${file}`)));
-        return `configuration:
+      Effect.mapBoth({
+        onSuccess: (files) => {
+          const paths = Ast.print(Nix.toExpr(files.map((file) => `${context.root}/${file}`)));
+          return `configuration:
 let
   pkgs = configuration.pkgs or { };
   describe = file: let value = import (/. + file); in if builtins.isFunction value then builtins.mapAttrs (name: optional: optional || pkgs ? \${name}) (builtins.functionArgs value) else null;
 in
 builtins.listToAttrs (map (file: { name = builtins.substring ${context.root.length + 1} (-1) file; value = describe file; }) ${paths.trim()})`;
+        },
+        onFailure: (error) =>
+          Provider.ProviderFailed.make({ provider: "files", reason: String(error) }),
       }),
-      Effect.mapError((error) =>
-        Provider.ProviderFailed.make({ provider: "files", reason: String(error) }),
-      ),
     ),
   // An argument may be left out if any configuration's `pkgs` supplies it.
   combine: (left, right) =>

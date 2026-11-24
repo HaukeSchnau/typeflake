@@ -70,17 +70,21 @@ export const provider = Provider.make({
   provide: (found) =>
     Effect.gen(function* () {
       const fs = yield* FileSystem.FileSystem;
-      const keys = yield* Effect.forEach(found.files, (file) =>
-        fs.readFileString(file).pipe(
-          Effect.flatMap((text) => Schema.decodeUnknownEffect(Keys)(parse(text))),
-          Effect.map((keys) => keysOf(keys)),
-          Effect.mapError((error) =>
-            Provider.ProviderFailed.make({
-              provider: "secrets",
-              reason: `${file}: ${String(error)}`,
+      const keys = yield* Effect.forEach(
+        found.files,
+        (file) =>
+          fs.readFileString(file).pipe(
+            Effect.flatMap((text) => Schema.decodeUnknownEffect(Keys)(parse(text))),
+            Effect.mapBoth({
+              onSuccess: (keys) => keysOf(keys),
+              onFailure: (error) =>
+                Provider.ProviderFailed.make({
+                  provider: "secrets",
+                  reason: `${file}: ${String(error)}`,
+                }),
             }),
           ),
-        ),
+        { concurrency: 1 },
       );
       const names = [...new Set([...keys.flat(), ...found.other])].toSorted();
       if (names.length === 0) return Provider.nothing;

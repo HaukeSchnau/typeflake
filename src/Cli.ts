@@ -152,9 +152,10 @@ const PackageJson = Schema.fromJsonString(Schema.Struct({ version: Schema.String
 
 Effect.gen(function* () {
   const fs = yield* FileSystem.FileSystem;
-  const { version } = yield* Schema.decodeEffect(PackageJson)(
-    yield* fs.readFileString(new URL("../package.json", import.meta.url).pathname),
+  const packageJson = yield* fs.readFileString(
+    new URL("../package.json", import.meta.url).pathname,
   );
+  const { version } = yield* Schema.decodeEffect(PackageJson)(packageJson);
   yield* Command.run(
     Command.make("typeflake").pipe(Command.withSubcommands([render, types, bump])),
     {
