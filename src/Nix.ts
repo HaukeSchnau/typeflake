@@ -11,19 +11,24 @@ export interface Nix<out A> {
 
 /** What option values are made of, besides expressions: nothing builds them in TypeScript. */
 declare const PackageBrand: unique symbol;
+
 /** A derivation. `Name` is its attribute in `pkgs`, where the probe found it there. */
 export interface Package<out Name extends string = string> {
   readonly [PackageBrand]: { readonly name: Name };
 }
+
 export interface NixFunction {
   readonly _tag: "NixFunction";
 }
+
 /** An option type Typeflake can't map. Only `raw` expressions fit it. */
 export interface Unsupported<out Name extends string> {
   readonly _tag: "Unsupported";
   readonly name: Name;
 }
+
 export type NixPath = string;
+
 /** A value an option of type `anything` accepts. */
 export type NixValue =
   | string
@@ -49,7 +54,9 @@ export const isNix = (value: unknown): value is Nix<unknown> =>
 /** The expression for a TypeScript value: a Nix expression, or data that Nix can hold. */
 export const toExpr = (value: unknown): Ast.Expr => {
   if (isNix(value)) return exprOf(value);
+
   if (value === null) return Ast.Null;
+
   switch (typeof value) {
     case "boolean":
       return Ast.bool(value);
@@ -59,6 +66,7 @@ export const toExpr = (value: unknown): Ast.Expr => {
       return Ast.string([Ast.text(value)]);
     case "object":
       if (Array.isArray(value)) return Ast.list(value.map(toExpr));
+
       return Ast.attrs(
         Object.entries(value).flatMap(([key, item]) =>
           item === undefined ? [] : [[key, toExpr(item)] as const],
@@ -96,9 +104,12 @@ export const nix = (
 ): Nix<string> => {
   const parts = strings.flatMap((text, index): ReadonlyArray<Ast.Part> => {
     const value = values[index];
+
     if (value === undefined) return [Ast.text(text)];
+
     return [Ast.text(text), isNix(value) ? exprOf(value) : Ast.text(String(value))];
   });
+
   return make(Ast.string(dedent(parts)));
 };
 
@@ -112,21 +123,26 @@ const blank = (line: string) => /^ *$/.test(line);
  */
 const dedent = (parts: ReadonlyArray<Ast.Part>): ReadonlyArray<Ast.Part> => {
   const source = parts.map((part) => (part._tag === "Text" ? part.text : "\u0000")).join("");
+
   if (!source.includes("\n")) return parts;
   const lines = source.split("\n");
   const body = blank(lines[0] ?? "") ? lines.slice(1) : lines;
   const widths = body.flatMap((line) => (blank(line) ? [] : [spaces(line)]));
   const width = widths.length === 0 ? 0 : Math.min(...widths);
+
   const dropped = body.map((line, index) =>
     index === body.length - 1 && blank(line) ? "" : line.slice(Math.min(width, spaces(line))),
   );
+
   const expressions = parts.flatMap((part) => (part._tag === "Text" ? [] : [part]));
+
   return dropped
     .join("\n")
     .split("\u0000")
     .flatMap((piece, index): ReadonlyArray<Ast.Part> => {
       const expression = expressions[index - 1];
       const before: ReadonlyArray<Ast.Part> = expression === undefined ? [] : [expression];
+
       return piece === "" ? before : before.concat(Ast.text(piece));
     });
 };
@@ -158,10 +174,13 @@ export type NixProxy<A> = Nix<A> &
  */
 export const proxy = <A>(expr: Ast.Expr): NixProxy<A> => {
   const value = make<A>(expr);
+
   const proxied = new Proxy(function () {}, {
     get: (_, key) => {
       if (key === TypeId) return value[TypeId];
+
       if (key === ExprId) return value[ExprId];
+
       if (key === Symbol.toPrimitive) {
         return () => {
           throw new TypeError(
@@ -169,16 +188,19 @@ export const proxy = <A>(expr: Ast.Expr): NixProxy<A> => {
           );
         };
       }
+
       // Promises and iteration probe for these; an expression is neither. Proxy traps receive
       // `string | symbol` keys, and only strings select attributes.
       // oxlint-disable-next-line anti-slop/no-runtime-typeof
       if (typeof key === "symbol" || key === "then" || key === "toJSON") return undefined;
+
       return proxy(Ast.select(expr, key));
     },
     has: (_, key) => key === TypeId || key === ExprId,
     apply: (_, __, args: ReadonlyArray<Nix<unknown> | NixValue>) =>
       proxy(Ast.apply(expr, ...args.map(toExpr))),
   });
+
   // SAFETY: the handler answers every field with an expression selecting it and every call with an
   // expression applying it, which is what `NixProxy<A>` promises; TypeScript can't see through a Proxy.
   // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion

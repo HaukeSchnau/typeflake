@@ -72,6 +72,7 @@ export const make = <A>(definition: Definition<A>): Provider => {
   const decode = Schema.decodeUnknownEffect(
     Schema.fromJsonString(Schema.NullOr(definition.schema)),
   );
+
   return {
     name: definition.name,
     nix: definition.nix,
@@ -87,8 +88,11 @@ export const make = <A>(definition: Definition<A>): Provider => {
             ),
           { concurrency: 1 },
         );
+
         const [first, ...rest] = decoded.filter((found) => found !== null);
+
         if (first === undefined) return nothing;
+
         return yield* definition.provide(rest.reduce(definition.combine, first), context);
       }),
   };

@@ -16,6 +16,7 @@ const Found = Schema.Struct({
 interface Keys {
   readonly [key: string]: Keys | string | number | boolean | null | ReadonlyArray<unknown>;
 }
+
 const Keys: Schema.Codec<Keys> = Schema.Record(
   Schema.String,
   Schema.Union([
@@ -38,6 +39,7 @@ const keysOf = (keys: Keys, prefix = ""): ReadonlyArray<string> =>
   Object.entries(keys).flatMap(([key, inner]) => {
     if (prefix === "" && key === "sops") return [];
     const path = `${prefix}${key}`;
+
     return isKeys(inner) ? keysOf(inner, `${path}/`) : [path];
   });
 
@@ -70,6 +72,7 @@ export const provider = Provider.make({
   provide: (found) =>
     Effect.gen(function* () {
       const fs = yield* FileSystem.FileSystem;
+
       const keys = yield* Effect.forEach(
         found.files,
         (file) =>
@@ -86,8 +89,11 @@ export const provider = Provider.make({
           ),
         { concurrency: 1 },
       );
+
       const names = [...new Set([...keys.flat(), ...found.other])].toSorted();
+
       if (names.length === 0) return Provider.nothing;
+
       return {
         ...Provider.nothing,
         register: [["sopsSecrets", names.map((name) => JSON.stringify(name)).join(" | ")]],

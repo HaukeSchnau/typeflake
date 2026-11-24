@@ -7,6 +7,7 @@ import { afterEach, describe, expect, it } from "vite-plus/test";
 import * as Project from "./Project.ts";
 
 let root = "";
+
 afterEach(() => rmSync(root, { recursive: true, force: true }));
 
 describe("moduleFiles", () => {

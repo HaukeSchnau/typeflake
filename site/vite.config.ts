@@ -7,6 +7,7 @@ const page = (): Plugin => ({
   name: "typeflake-page",
   transformIndexHtml(html) {
     const unused = new Set(fragments.keys());
+
     const out = html
       .replace(
         /(?<=>[^<]*)\b[A-Za-z0-9]+(?:-[A-Za-z0-9]+)+\b(?=[^<]*<)/g,
@@ -14,12 +15,16 @@ const page = (): Plugin => ({
       )
       .replace(/<!-- @([\w-]+) -->/g, (_, name: string) => {
         const fragment = fragments.get(name);
+
         if (fragment === undefined)
           throw new Error(`index.html asks for an unknown fragment: ${name}`);
         unused.delete(name);
+
         return fragment;
       });
+
     if (unused.size > 0) throw new Error(`index.html doesn't place: ${[...unused].join(", ")}`);
+
     return out;
   },
 });

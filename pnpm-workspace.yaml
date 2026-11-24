@@ -1,9 +1,13 @@
 packages:
   - site
+pmOnFail: error
 allowBuilds:
   # Fetches the runtime for `alchemy dev`, which deploys don't use.
   workerd: false
 minimumReleaseAgeExclude:
+  - "@schnau/tsconfig"
+  # Vite+ 1.8.0 came out on 2026-11-24 at 03:17 UTC, inside pnpm's one-day minimumReleaseAge,
+  # which pnpm 12 also applies to the lockfile. Delete these entries after 2026-11-25 03:17 UTC.
   - "@voidzero-dev/vite-plus-core@8.3.8001"
   - "@voidzero-dev/vite-plus-darwin-arm64@1.8.0"
   - "@voidzero-dev/vite-plus-darwin-x64@1.8.0"

@@ -27,6 +27,7 @@ const strings: ReadonlyArray<readonly [ReadonlyArray<Ast.Part>, string]> = [
 describe("print", () => {
   it("renders strings that evaluate to their value", () => {
     const list = Ast.print(Ast.list(strings.map(([parts]) => Ast.string(parts))));
+
     const evaluated = execFileSync(
       "nix-instantiate",
       ["--eval", "--strict", "--json", "-E", `let v = "@"; in ${list}`],
@@ -34,11 +35,13 @@ describe("print", () => {
         encoding: "utf8",
       },
     );
+
     expect(JSON.parse(evaluated)).toEqual(strings.map(([, value]) => value));
   });
 
   it("collapses single-attribute sets and parenthesizes by precedence", () => {
     const lib = Ast.variable("lib");
+
     const expr = Ast.attrs([
       ["services", Ast.attrs([["openssh", Ast.attrs([["enable", Ast.bool(true)]])]])],
       [

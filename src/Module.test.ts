@@ -80,6 +80,7 @@ describe("NixOS.module", () => {
         return define({ services: { greeter: { port: yield* Effect.succeed(9000) } } });
       },
     });
+
     expect(await Effect.runPromise(port.render)).toBe(
       `{ ... }:\n{\n  services.greeter.port = 9000;\n}\n`,
     );
@@ -99,10 +100,12 @@ NixOS.module({
     // @ts-expect-error a misspelled option inside mkIf
     mkIf(config.services.greeter.enable, { services: { greeter: { prot: 1 } } }),
 });
+
 NixOS.module({
   // @ts-expect-error a string where a port belongs
   config: { services: { greeter: { port: "80" } } },
 });
+
 NixOS.module({
   config: ({ pkgs }) =>
     define({
@@ -110,15 +113,18 @@ NixOS.module({
       environment: { systemPackages: [pkgs.git, "ripgrep"] },
     }),
 });
+
 NixOS.module({
   config: () =>
     // @ts-expect-error a misspelled option next to a correct one
     define({ services: { greeter: { enable: true, prot: 1 } } }),
 });
+
 NixOS.module({
   // @ts-expect-error a returned object literal, which TypeScript wouldn't check for misspelled keys
   config: () => ({ services: { greeter: { enable: true } } }),
 });
+
 NixOS.module({
   options: { greeter: { enable: Options.enable("the greeter") } },
   // @ts-expect-error reading an option no module declares
