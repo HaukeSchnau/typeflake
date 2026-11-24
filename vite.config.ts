@@ -46,12 +46,15 @@ export default defineConfig({
     ],
     // `.typeflake` holds generated types and local experiments, which nothing imports. The site's
     // example checks against types probed from nixpkgs, which site/scripts/example.ts generates.
+    // `.calder` is Calder's own TypeScript project, checked against whichever Calder SDK `calder gen`
+    // linked in.
     ignorePatterns: [
       ...generated,
       ...agentTooling,
       "tools/oxlint/anti-slop/**",
       "**/.typeflake",
       "site/example/**",
+      ".calder",
     ],
     plugins: ["effecttsgo", "eslint", "oxc", "unicorn", "typescript"],
     categories: {
@@ -79,7 +82,10 @@ export default defineConfig({
       "anti-slop/no-unsafe-dictionary-type": "error",
       "anti-slop/no-widen-then-assert": "error",
       "anti-slop/require-safety-comment-for-type-assertion": "error",
+      "anti-slop/require-readable-spacing": "error",
       "anti-slop-effect/no-service-constructor-imports": "error",
+      "anti-slop-effect/no-manual-effect-error-tag": "error",
+      "anti-slop-effect/prefer-effect-match": "error",
       "eslint/eqeqeq": "error",
       "typescript/consistent-type-imports": "error",
       "typescript/no-explicit-any": "error",
@@ -96,6 +102,16 @@ export default defineConfig({
 
       // JavaScript truthiness is readable in guards.
       "effecttsgo/strict-boolean-expressions": "off",
+
+      // The AST (src/Ast.ts) is plain tagged objects that its constructors build, and the 16 findings
+      // are those constructors. Rebuilding it on Data.TaggedEnum is a redesign of the AST.
+      // https://github.com/dmmulroy/anti-slop/blob/13909c9/src/effect/rules/no-manual-tagged-construction.ts
+      "anti-slop-effect/no-manual-tagged-construction": "off",
+
+      // TypeScript narrows a `switch` or comparison on `_tag` as well as `Match` does, and the AST's
+      // printer and walkers would pay for a runtime matcher per node. 16 findings, 10 in src/Ast.ts.
+      // https://github.com/dmmulroy/anti-slop/blob/13909c9/src/effect/rules/no-manual-tag-comparison.ts
+      "anti-slop-effect/no-manual-tag-comparison": "off",
 
       // Reusing a precise local name in a nested callback is clearer and TypeScript resolves the
       // scopes unambiguously.

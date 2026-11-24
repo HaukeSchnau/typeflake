@@ -1,10 +1,16 @@
 {
   description = "Typeflake: typed Nix modules written in Effect TypeScript";
 
-  inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+  inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    nix-infra-modules = {
+      url = "github:HaukeSchnau/nix-infra-modules/b365d13637b9dc83c397df542b5112a50ac8cbb9";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+  };
 
   outputs =
-    { nixpkgs, ... }:
+    { nixpkgs, nix-infra-modules, ... }:
     let
       systems = [
         "aarch64-linux"
@@ -17,11 +23,12 @@
       devShells = forAll (
         pkgs:
         let
-          tools = import ./nix/toolchain.nix { inherit pkgs; };
+          toolchain = import ./nix/toolchain.nix {
+            inherit pkgs;
+            sdk = nix-infra-modules;
+          };
           shell = pkgs.mkShellNoCC {
-            packages = [
-              tools.nodejs
-              tools.pnpm
+            packages = builtins.attrValues toolchain ++ [
               pkgs.nixfmt
               # The tests evaluate rendered Nix.
               pkgs.nix

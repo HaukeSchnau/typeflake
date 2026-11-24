@@ -1,15 +1,13 @@
-import { Calder, On, Task, cmd } from "@calder-ci/core";
-import { Npm, Pnpm, Project } from "@calder-ci/std";
+import { Calder, On } from "@calder-ci/core";
+import { Npm, Pnpm, Project, Vp } from "@calder-ci/std";
 import { Schema } from "effect";
 import { flake } from "./flake.ts";
 
 const shell = flake.devShells.ci;
 const install = Pnpm.install({ shell });
 
-/** The library's types, its declaration build and the tests, some of which evaluate rendered Nix. */
-const check = Task.make("check", { shell, setup: install, run: cmd`pnpm run check` });
-const test = Task.make("test", { shell, setup: install, run: cmd`pnpm test` });
-const checks = [check, test];
+/** `vp check` (format, lint and the library's types) and the whole `vp test` suite. */
+const checks = Vp.tasks({ shell, setup: install });
 
 /** typeflake.schnau.dev (site/alchemy.run.ts), with a preview per pull request. */
 const site = Project.alchemy({
